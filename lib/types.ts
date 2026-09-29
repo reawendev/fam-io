@@ -1,0 +1,75 @@
+export type Scene = {
+  id: string;
+  title: string;
+  description: string | null;
+  video_path: string;
+  bg_audio_path: string | null;
+  original_volume: number;
+  duration: number | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type SceneRole = {
+  id: string;
+  scene_id: string;
+  name: string;
+  color: string;
+  sort: number;
+};
+
+export type SceneLine = {
+  id: string;
+  scene_id: string;
+  role_id: string;
+  start_time: number;
+  end_time: number;
+  text: string | null;
+};
+
+export type SceneFull = Scene & { scene_roles: SceneRole[]; scene_lines: SceneLine[] };
+
+export type RoomStatus = "lobby" | "recording" | "finale";
+
+export type Room = {
+  id: string;
+  code: string;
+  scene_id: string;
+  host_id: string;
+  status: RoomStatus;
+  finale_at: string | null;
+  created_at: string;
+};
+
+export type RoomPlayer = {
+  room_id: string;
+  user_id: string;
+  nickname: string;
+  done: boolean;
+  joined_at: string;
+};
+
+export type RoomRole = { room_id: string; role_id: string; user_id: string; picked: boolean };
+
+export type Recording = {
+  id: string;
+  room_id: string;
+  line_id: string;
+  user_id: string;
+  audio_path: string;
+  offset_time: number;
+};
+
+export const ROLE_COLORS = ["#ff7a1a", "#38bdf8", "#a3e635", "#f472b6", "#c084fc", "#facc15", "#2dd4bf"];
+export const MAX_ROLES = 7;
+
+export function sortLines(lines: SceneLine[]) {
+  return [...lines].sort((a, b) => a.start_time - b.start_time);
+}
+
+export function fmtTime(s: number) {
+  if (!isFinite(s)) return "0:00.0";
+  const m = Math.floor(s / 60);
+  const r = s - m * 60;
+  return `${m}:${r < 10 ? "0" : ""}${r.toFixed(1)}`;
+}
