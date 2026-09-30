@@ -9,6 +9,8 @@ import { useMe } from "@/lib/auth";
 import { downloadBlob, exportDub, exportSupported, slugify } from "@/lib/exporter";
 import { DubPlayer, recItem, unlockAudio, type DubItem } from "@/lib/player";
 import { timeAgo } from "@/lib/progress";
+import { isEffect } from "@/lib/effects";
+import VotePanel from "@/components/VotePanel";
 import { errMsg, publicUrl, sb } from "@/lib/supabase";
 import { sortLines, type DubComment, type ProfileLite, type SceneFull } from "@/lib/types";
 
@@ -19,12 +21,12 @@ type Full = {
   comment_count: number;
   scenes: SceneFull | null;
   dub_cast: { role_id: string; user_id: string; profiles: ProfileLite | null }[];
-  dub_recordings: { line_id: string; user_id: string; audio_path: string; offset_time: number }[];
+  dub_recordings: { line_id: string; user_id: string; audio_path: string; offset_time: number; effect?: string }[];
   dub_participants: { user_id: string; lines: number; profiles: ProfileLite | null }[];
 };
 
 const SELECT =
-  "id, created_at, like_count, comment_count, scenes(*, scene_roles(*), scene_lines(*)), dub_cast(role_id, user_id, profiles(username, display_name, color)), dub_recordings(line_id, user_id, audio_path, offset_time), dub_participants(user_id, lines, profiles(username, display_name, color))";
+  "id, created_at, like_count, comment_count, scenes(*, scene_roles(*), scene_lines(*)), dub_cast(role_id, user_id, profiles(username, display_name, color)), dub_recordings(line_id, user_id, audio_path, offset_time, effect), dub_participants(user_id, lines, profiles(username, display_name, color))";
 
 type ExportState =
   | { kind: "idle" }
@@ -117,7 +119,7 @@ export default function DubView({ id }: { id: string }) {
     const lineById = Object.fromEntries(dub.scenes.scene_lines.map((l) => [l.id, l]));
     const items = dub.dub_recordings
       .filter((r) => lineById[r.line_id])
-      .map((r) => recItem(publicUrl("recordings", r.audio_path), r.offset_time, lineById[r.line_id], r.line_id));
+      .map((r) => recItem(publicUrl("recordings", r.audio_path), r.offset_time, lineById[r.line_id], r.line_id, isEffect(r.effect) ? r.effect : undefined));
     itemsRef.current = items;
     const p = new DubPlayer(videoRef.current, { originalVolume: dub.scenes.original_volume });
     playerRef.current = p;
@@ -429,6 +431,7 @@ export default function DubView({ id }: { id: string }) {
             })}
           </ul>
         </div>
+        <VotePanel dubId={id} scene={scene} me={me.status === "in" ? me.user.id : null} />
         <div className="panel flex flex-col gap-2 p-4 text-sm">
           <p className="text-muted">Bu sahneyi sen de seslendir.</p>
           <ButtonLink href="/sahneler" variant="primary" size="sm" icon={<Link2 className="size-3.5" />}>

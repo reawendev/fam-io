@@ -9,6 +9,8 @@ import { errMsg, publicUrl, sb, serverOffset } from "@/lib/supabase";
 import { audioUnlocked, DubPlayer, recItem, unlockAudio, type DubItem } from "@/lib/player";
 import { downloadBlob, exportDub, exportSupported, slugify } from "@/lib/exporter";
 import { sortLines, type Recording } from "@/lib/types";
+import { isEffect } from "@/lib/effects";
+import VotePanel from "@/components/VotePanel";
 import type { RoomProps } from "./Lobby";
 
 type ExportState =
@@ -17,7 +19,7 @@ type ExportState =
   | { kind: "done"; blob: Blob; name: string }
   | { kind: "error"; message: string };
 
-export default function Finale({ room, scene, me, players, assignments, isHost }: RoomProps) {
+export default function Finale({ room, scene, me, players, assignments, isHost, reload }: RoomProps) {
   const roles = useMemo(() => [...scene.scene_roles].sort((a, b) => a.sort - b.sort), [scene]);
   const roleById = useMemo(() => Object.fromEntries(roles.map((r) => [r.id, r])), [roles]);
   const lines = useMemo(() => sortLines(scene.scene_lines), [scene]);
@@ -54,7 +56,7 @@ export default function Finale({ room, scene, me, players, assignments, isHost }
         const lineById = Object.fromEntries(scene.scene_lines.map((l) => [l.id, l]));
         const items = recs
           .filter((r) => lineById[r.line_id])
-          .map((r) => recItem(publicUrl("recordings", r.audio_path), r.offset_time, lineById[r.line_id], r.line_id));
+          .map((r) => recItem(publicUrl("recordings", r.audio_path), r.offset_time, lineById[r.line_id], r.line_id, isEffect(r.effect) ? r.effect : undefined));
         itemsRef.current = items;
         const p = new DubPlayer(videoRef.current, { originalVolume: scene.original_volume });
         playerRef.current = p;
@@ -139,6 +141,7 @@ export default function Finale({ room, scene, me, players, assignments, isHost }
   async function hostRpc(fn: string) {
     const { error } = await sb().rpc(fn, { p_room: room.id });
     if (error) setError(errMsg(error));
+    else reload?.();
   }
 
   async function startExport() {
@@ -244,6 +247,7 @@ export default function Finale({ room, scene, me, players, assignments, isHost }
       {error && <Notice tone="warn">{error}</Notice>}
 
       {room.current_dub_id && <DubSaved dubId={room.current_dub_id} me={me} />}
+      {room.current_dub_id && loaded && <VotePanel dubId={room.current_dub_id} scene={scene} me={me} />}
 
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
         <div className="panel flex flex-col gap-3 p-4">

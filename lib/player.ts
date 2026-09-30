@@ -1,5 +1,7 @@
 "use client";
 
+import { applyEffect, effectTail, type EffectId } from "./effects";
+
 /**
  * DubPlayer: videoyu ve tüm ses kayıtlarını Web Audio saatine göre senkron oynatır.
  * - Kayıtlar AudioBufferSourceNode ile örnek hassasiyetinde planlanır.
@@ -70,6 +72,8 @@ export type DubItem = {
   from?: number;
   to?: number;
   key?: string;
+  /** Oynatırken uygulanacak ses efekti */
+  effect?: EffectId;
 };
 
 type Loaded = { buf: AudioBuffer; at: number; from: number; to: number };
@@ -149,6 +153,7 @@ export class DubPlayer {
     const itemP = Promise.all(
       items.map((it) =>
         decode(it.url)
+          .then((raw) => applyEffect(audioCtx(), raw, it.effect))
           .then((buf) =>
             loaded.push({
               buf,
@@ -342,6 +347,7 @@ export function recItem(
   offset: number,
   line: { start_time: number; end_time: number },
   key?: string,
+  effect?: EffectId,
 ): DubItem {
-  return { url, at: offset, from: line.start_time - LINE_PAD, to: line.end_time + LINE_TAIL, key };
+  return { url, at: offset, from: line.start_time - LINE_PAD, to: line.end_time + LINE_TAIL + effectTail(effect), key, effect };
 }

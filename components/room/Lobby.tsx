@@ -14,9 +14,11 @@ export type RoomProps = {
   players: RoomPlayer[];
   assignments: RoomRole[];
   isHost: boolean;
+  /** Oda verisini hemen yeniden yükle (realtime gecikirse ekran beklemesin) */
+  reload?: () => Promise<void> | void;
 };
 
-export default function Lobby({ room, scene, me, players, assignments, isHost }: RoomProps) {
+export default function Lobby({ room, scene, me, players, assignments, isHost, reload }: RoomProps) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +50,7 @@ export default function Lobby({ room, scene, me, players, assignments, isHost }:
     setError(null);
     const { error } = await sb().rpc(fn, args);
     if (error) setError(errMsg(error));
+    else await reload?.();
     setBusy(null);
     return !error;
   }
@@ -102,6 +105,7 @@ export default function Lobby({ room, scene, me, players, assignments, isHost }:
       </section>
 
       <aside className="flex flex-col gap-4">
+        {error && <Notice>{error}</Notice>}
         <div className="panel">
           <div className="panel-head">
             <h3 className="text-sm font-medium">Karakterini seç</h3>
@@ -231,7 +235,6 @@ export default function Lobby({ room, scene, me, players, assignments, isHost }:
           >
             <LogOut className="size-3.5" /> Odadan ayrıl
           </button>
-          {error && <Notice>{error}</Notice>}
         </div>
       </aside>
     </main>

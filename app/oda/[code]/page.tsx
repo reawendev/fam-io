@@ -97,7 +97,7 @@ export default function OdaPage() {
     );
   }
 
-  const common = { room, scene: r.scene, me: r.me, players: r.players, assignments: r.assignments, isHost };
+  const common = { room, scene: r.scene, me: r.me, players: r.players, assignments: r.assignments, isHost, reload: r.reload };
 
   return (
     <>

@@ -40,6 +40,11 @@ Ekran görüntüleri: docs/ klasörüne koyup aşağıdaki satırların yorumunu
 | 💞 **Uyum** | Birlikte yaptığınız sahnelere ve aldıkları beğenilere göre arkadaşlarınla uyum yüzden. |
 | 💬 **Beğeni ve yorum** | Dublajlara beğeni ve yorum bırak, canlı güncellenir. |
 | 🔗 **Paylaşım linki** | Her dublajın herkese açık bir sayfası var; hesabı olmayan da izleyebilir. |
+| 🎛️ **Ses efektleri** | Robot, Sincap, Kalın ses, Dev, Telefon, Megafon, Mağara, Uzaylı. Kayıttan sonra da değiştirilebilir; senkron bozulmaz. |
+| 🗳️ **Final oylaması** | "Turun seslendirmeni" ve "En komik replik". Her oy +10 XP. |
+| 🏅 **Rozetler** | 20+ otomatik rozet ve Kurucu, Erken Üye gibi özel rozetler; en iyileri isminin yanında. |
+| 🗜️ **Otomatik sıkıştırma** | Yüklenen videolar tarayıcıda 720p'ye küçültülür; ücretsiz depolama çok daha geç dolar. |
+| 💬 **Discord bildirimi** | Her yeni dublaj Discord kanalınıza otomatik düşer. |
 | 🎭 **Karakter seçimi** | Herkes lobide istediği karakteri seçer; seçilmeyenler başlarken rastgele dağıtılır. |
 | 🎧 **Orijinali dinle** | Kayıttan önce repliğin orijinal sesini dinle, benzer bir replik uydur. |
 | 🎬 **Replik bazlı kayıt** | 3-2-1 geri sayım, altyazı ve ilerleme çubuğu. Geri sayım sırasındaki sesler finale girmez. |
@@ -85,7 +90,7 @@ flowchart LR
 
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4
 - **Backend:** Supabase (Postgres + RLS, Realtime, Storage, Auth)
-- **Medya:** MediaRecorder API, Web Audio API, Canvas captureStream, HTML5 Video
+- **Medya:** MediaRecorder API, Web Audio API (efektler dahil), WebCodecs + Mediabunny (sıkıştırma), Canvas captureStream
 - **3D:** three.js (prosedürel, model dosyası yok)
 - **Dağıtım:** Vercel
 
@@ -148,6 +153,7 @@ Sıfırdan kurulumda sadece `schema.sql` yeterli. Ayrıntılar: [CHANGELOG.md](C
 | Sahnedeki her partner | +10 (en çok 5) |
 | Günün ilk sahnesi | +20 + seri × 5 (en çok +50) |
 | Dublajın beğenildi | +5 (beğeni geri alınırsa −5) |
+| Oylamada aldığın her oy | +10 (oy geri alınırsa −10) |
 
 - **Level:** 1→2 için 100 XP, sonraki her level 50 XP daha fazla ister.
 - **Seri:** En az bir replik kaydettiğin bir sahne finale ulaşınca o gün sayılır (İstanbul saati). Bir gün atlarsan sıfırlanır.
@@ -160,9 +166,46 @@ Sıfırdan kurulumda sadece `schema.sql` yeterli. Ayrıntılar: [CHANGELOG.md](C
 >  where email = 'kullaniciadi@users.fam-io.app';
 > ```
 
+## 🏅 Rozetler
+
+Rozetlerin çoğu otomatik kazanılır (sunucudaki istatistiklerden hesaplanır). Özel rozetleri Supabase SQL Editor'dan sen verirsin:
+
+```sql
+-- ver (kurucu, beta, discord, destekci ya da katalog dışı yeni bir ad)
+insert into user_badges (user_id, badge, note)
+select id, 'kurucu', 'fam-io kurucusu' from profiles where username = 'kullaniciadi';
+
+-- geri al
+delete from user_badges where badge = 'beta' and user_id = (select id from profiles where username = 'kullaniciadi');
+
+-- "Erken Üye" sınırını değiştir (varsayılan ilk 50 üye)
+update app_settings set value = '100' where key = 'early_member_limit';
+```
+
+Görselleri kendin üretmek istersen: [docs/rozet-gorselleri.md](docs/rozet-gorselleri.md).
+
+## 💬 Discord bildirimi (opsiyonel)
+
+Her yeni dublaj Discord kanalınıza düşer. Kendi sunucun gerekmez; mesajı Supabase gönderir.
+
+1. **Discord:** Kanal ayarları → **Entegrasyonlar** → **Webhook'lar** → **Yeni Webhook** → **Webhook URL'sini kopyala**.
+2. **Supabase:** Database → **Extensions** → `pg_net`'i aç (migration açmayı dener; kapalıysa buradan aç).
+3. **Supabase SQL Editor:**
+   ```sql
+   insert into app_settings (key, value) values
+     ('discord_webhook_url', 'https://discord.com/api/webhooks/...'),
+     ('site_url', 'https://sitenin-adresi.vercel.app')
+   on conflict (key) do update set value = excluded.value;
+
+   select discord_test();   -- kanala deneme mesajı gider
+   ```
+4. Kapatmak için: `delete from app_settings where key = 'discord_webhook_url';`
+
+Webhook adresi `app_settings` tablosunda durur; bu tablo tarayıcıdan okunamaz, yani adres kimseyle paylaşılmaz.
+
 ## 🎞️ Sahne hazırlama ipuçları
 
-- **30 sn – 2 dk** arası, 720p MP4 klipler idealdir (dosya sınırı 50 MB).
+- **30 sn – 2 dk** arası klipler idealdir. Büyük/yüksek çözünürlüklü videolar yüklenirken tarayıcıda otomatik olarak 720p'ye sıkıştırılır (Chrome/Edge/Safari); sıkıştırılmış dosya en fazla 50 MB olabilir.
 - Orijinal konuşmalar finalde duyulmasın diye video sesi varsayılan olarak kapalıdır.
 - Müzik ve efektler de duyulsun istersen klibin sesini bir vokal ayırıcıyla (ör. *Ultimate Vocal Remover*) ayır, sadece müzik/efekt kısmını editördeki **Ayrı müzik/efekt dosyası** alanına yükle.
 - Replik metinlerini yazarsan kayıt sırasında altyazı olarak gösterilir.
@@ -187,6 +230,8 @@ fam-io/
 │   ├── SceneEditor.tsx          # Video yükleme, karakterler, replik işaretleme
 │   ├── DubView.tsx              # Dublaj oynatıcı + beğeni + yorum
 │   ├── DubCard.tsx              # Dublaj kartı (akış ve profil)
+│   ├── VotePanel.tsx            # Final oylaması
+│   ├── BadgeIcon.tsx            # Rozet çizimleri
 │   ├── landing/DubbingMachine3D.tsx  # Ana sayfadaki 3D makine
 │   └── room/
 │       ├── useRoom.ts           # Oda durumu + Supabase Realtime
@@ -199,6 +244,9 @@ fam-io/
 │   ├── supabase.ts              # İstemci, sunucu saat farkı
 │   ├── auth.ts                  # Kullanıcı adı + şifre, oturum/profil store'u
 │   ├── progress.ts              # Level, seri, uyum hesapları
+│   ├── effects.ts               # Ses efektleri (perde kaydırma, filtreler, yankı)
+│   ├── badges.ts                # Rozet kataloğu
+│   ├── compress.ts              # Yüklemeden önce 720p sıkıştırma
 │   └── types.ts
 ├── supabase/schema.sql          # Tablolar, RLS, RPC fonksiyonları, storage
 ├── supabase/migrations/         # Mevcut kurulumlar için güncellemeler

@@ -6,11 +6,12 @@ import { Avatar, Button, cx, IconButton, Notice, Progress, RoleTag } from "@/com
 import { errMsg, publicUrl, sb } from "@/lib/supabase";
 import { DubPlayer, LINE_TAIL, playOriginal, recItem, unlockAudio } from "@/lib/player";
 import { fmtTime, sortLines, type Recording, type SceneLine } from "@/lib/types";
+import { EFFECTS, isEffect, type EffectId } from "@/lib/effects";
 import type { RoomProps } from "./Lobby";
 
 const PREROLL = 3; // replikten önce 3-2-1 geri sayım (bu sırada çıkan sesler finale girmez)
 
-type MyRec = { url: string; offset: number };
+type MyRec = { url: string; offset: number; effect: EffectId };
 type Mode =
   | { kind: "idle" }
   | { kind: "arming"; line: SceneLine }
@@ -33,7 +34,7 @@ function pickMime(): { mimeType?: string; ext: string } {
   return { ext: "webm" };
 }
 
-export default function Recorder({ room, scene, me, players, assignments, isHost }: RoomProps) {
+export default function Recorder({ room, scene, me, players, assignments, isHost, reload }: RoomProps) {
   const roles = useMemo(() => [...scene.scene_roles].sort((a, b) => a.sort - b.sort), [scene]);
   const roleById = useMemo(() => Object.fromEntries(roles.map((r) => [r.id, r])), [roles]);
   const allLines = useMemo(() => sortLines(scene.scene_lines), [scene]);
@@ -46,6 +47,9 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
   };
 
   const [recs, setRecs] = useState<Record<string, MyRec>>({});
+  // Kaydedilmemiş replikler için seçilen efekt (kayıt yüklenince sunucuya yazılır)
+  const [pendingFx, setPendingFx] = useState<Record<string, EffectId>>({});
+  const effectOf = (lineId: string): EffectId => recs[lineId]?.effect ?? pendingFx[lineId] ?? "dogal";
   const [selId, setSelId] = useState<string | null>(null);
   const [mode, setModeState] = useState<Mode>({ kind: "idle" });
   const modeRef = useRef<Mode>(mode);
@@ -65,6 +69,8 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
 
   const recsRef = useRef(recs);
   recsRef.current = recs;
+  const pendingFxRef = useRef(pendingFx);
+  pendingFxRef.current = pendingFx;
   const myLinesRef = useRef(myLines);
   myLinesRef.current = myLines;
 
@@ -78,7 +84,8 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
       .eq("user_id", me)
       .then(({ data }) => {
         const m: Record<string, MyRec> = {};
-        for (const r of (data as Recording[]) ?? []) m[r.line_id] = { url: publicUrl("recordings", r.audio_path), offset: r.offset_time };
+        for (const r of (data as Recording[]) ?? [])
+          m[r.line_id] = { url: publicUrl("recordings", r.audio_path), offset: r.offset_time, effect: isEffect(r.effect) ? r.effect : "dogal" };
         setRecs(m);
       });
   }, [room.id, me]);
@@ -103,7 +110,12 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
         if (e1) throw e1;
         const { error: e2 } = await sb().rpc("save_recording", { p_room: room.id, p_line: line.id, p_path: path, p_offset: offset });
         if (e2) throw e2;
-        const next = { ...recsRef.current, [line.id]: { url: URL.createObjectURL(blob), offset } };
+        // Tekrar çekimde efekt korunur; ilk kayıtta seçilmiş efekt varsa yaz
+        const fx: EffectId = recsRef.current[line.id]?.effect ?? pendingFxRef.current[line.id] ?? "dogal";
+        if (!recsRef.current[line.id] && fx !== "dogal") {
+          await sb().rpc("set_recording_effect", { p_room: room.id, p_line: line.id, p_effect: fx });
+        }
+        const next = { ...recsRef.current, [line.id]: { url: URL.createObjectURL(blob), offset, effect: fx } };
         setRecs(next);
         const ml = myLinesRef.current;
         const nextLine = ml.find((l) => !next[l.id] && l.start_time > line.start_time) ?? ml.find((l) => !next[l.id]);
@@ -220,9 +232,25 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
     });
   }
 
-  async function preview(line: SceneLine) {
+  async function chooseEffect(line: SceneLine, fx: EffectId) {
+    setError(null);
+    const rec = recsRef.current[line.id];
+    if (!rec) {
+      setPendingFx((m) => ({ ...m, [line.id]: fx }));
+      return;
+    }
+    if (rec.effect === fx) return;
+    const { error } = await sb().rpc("set_recording_effect", { p_room: room.id, p_line: line.id, p_effect: fx });
+    if (error) return setError(errMsg(error));
+    const updated = { ...rec, effect: fx };
+    setRecs((m) => ({ ...m, [line.id]: updated }));
+    recsRef.current = { ...recsRef.current, [line.id]: updated };
+    preview(line, updated);
+  }
+
+  async function preview(line: SceneLine, override?: MyRec) {
     const v = videoRef.current;
-    const rec = recs[line.id];
+    const rec = override ?? recs[line.id];
     if (!v || !rec) return;
     stopAll();
     setBusy(true);
@@ -231,7 +259,7 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
       playerRef.current?.destroy();
       const p = new DubPlayer(v);
       playerRef.current = p;
-      await p.load([recItem(rec.url, rec.offset, line)], null);
+      await p.load([recItem(rec.url, rec.offset, line, line.id, rec.effect)], null);
       p.onEnd = () => setMode({ kind: "idle" });
       setMode({ kind: "preview", line });
       p.play(Math.max(0, line.start_time - 0.8), 0.1, line.end_time + LINE_TAIL + 0.2);
@@ -253,7 +281,7 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
       const p = new DubPlayer(v, { originalVolume: scene.original_volume });
       playerRef.current = p;
       await p.load(
-        myLines.filter((l) => recs[l.id]).map((l) => recItem(recs[l.id].url, recs[l.id].offset, l)),
+        myLines.filter((l) => recs[l.id]).map((l) => recItem(recs[l.id].url, recs[l.id].offset, l, l.id, recs[l.id].effect)),
         scene.bg_audio_path ? publicUrl("scenes", scene.bg_audio_path) : null,
       );
       p.onEnd = () => setMode({ kind: "idle" });
@@ -269,6 +297,7 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
   async function toggleDone() {
     const { error } = await sb().from("room_players").update({ done: !meDone }).eq("room_id", room.id).eq("user_id", me);
     if (error) setError(errMsg(error));
+    else reload?.();
   }
 
   async function startFinale() {
@@ -276,6 +305,7 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
     if (notDone.length && !confirm(`${notDone.map((p) => p.nickname).join(", ")} henüz hazır değil. Yine de finali başlatalım mı?`)) return;
     const { error } = await sb().rpc("start_finale", { p_room: room.id });
     if (error) setError(errMsg(error));
+    else reload?.();
   }
 
   const busyRec = mode.kind === "arming" || mode.kind === "rec" || mode.kind === "upload";
@@ -401,6 +431,35 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
                     {mode.kind === "preview" ? "Durdur" : "Kaydımı dinle"} <span className="kbd ml-1">P</span>
                   </Button>
                 )}
+              </div>
+              <div className="mt-5 border-t border-line pt-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="eyebrow">Ses efekti</span>
+                  <span className="text-xs text-muted">{EFFECTS.find((e) => e.id === effectOf(sel.id))?.hint}</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Ses efekti">
+                  {EFFECTS.map((fx) => {
+                    const on = effectOf(sel.id) === fx.id;
+                    return (
+                      <button
+                        key={fx.id}
+                        role="radio"
+                        aria-checked={on}
+                        disabled={busyRec}
+                        onClick={() => chooseEffect(sel, fx.id)}
+                        className={cx(
+                          "h-8 rounded-md border px-2.5 text-[13px] transition-colors disabled:opacity-40",
+                          on ? "border-accent/60 bg-accent/10 text-accent" : "border-line-strong bg-surface-2 text-fg-2 hover:text-fg",
+                        )}
+                      >
+                        {fx.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-muted">
+                  {recs[sel.id] ? "Efekt değişince kaydın o efektle çalar; kaydın bozulmaz, istediğin an değiştirebilirsin." : "Kaydettikten sonra da değiştirebilirsin."}
+                </p>
               </div>
               <p className="mt-4 text-xs leading-relaxed text-muted">
                 Kaydete basınca video repliğinden {PREROLL} saniye önce başlar. 3-2-1 bitince konuş; replik bitince kayıt kendiliğinden durur.

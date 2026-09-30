@@ -59,6 +59,7 @@ export type Recording = {
   user_id: string;
   audio_path: string;
   offset_time: number;
+  effect?: string;
 };
 
 export const ROLE_COLORS = ["#ff7a1a", "#38bdf8", "#a3e635", "#f472b6", "#c084fc", "#facc15", "#2dd4bf"];

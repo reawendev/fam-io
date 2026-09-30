@@ -1,5 +1,27 @@
 # Değişiklik notları
 
+## 0.4.0 — 1 Ekim 2026
+
+### Yeni
+- **Ses efektleri:** Doğal, Robot, Kalın ses, Sincap, Dev, Telefon, Megafon, Mağara, Uzaylı. Kayıttan önce ya da sonra seçilir; kayıt bozulmaz, efekt oynatırken uygulanır ve istenildiği an değiştirilebilir. Perde değiştiren efektler süreyi korur, dudak senkronu kaymaz. Finale, paylaşım sayfasına ve indirilen videoya da uygulanır.
+- **Final oylaması:** "Turun seslendirmeni" ve "En komik replik". Sadece o sahnede oynayanlar oy verir, kendine oy verilemez; oy değiştirilebilir ya da geri alınabilir. Alınan her oy +10 XP. Finalde ve dublaj sayfasında canlı güncellenir.
+- **Rozetler:** 20 otomatik rozet (sahne sayısı, seri, oylama, beğeni, yorum, uyumlu ikili, efekt, sahne yükleme, level) ve özel rozetler (Kurucu, Erken Üye, Beta Test, Discord Ekibi, Destekçi). En değerli 3 rozet profilde ismin yanında görünür; kazanılmamış rozetler ilerleme çubuğuyla gösterilir. İlk 50 üye otomatik "Erken Üye" olur. Katalog dışı özel rozetler de elle verilebilir.
+- **Otomatik video sıkıştırma:** Sahne yüklerken büyük videolar tarayıcıda 720p'ye küçültülür (ses korunur). Supabase'in 1 GB depolama ve 5 GB/ay trafik sınırını çok daha geç doldurur; 50 MB'tan büyük videolar da artık yüklenebilir. Chrome/Edge/Safari'de MP4 (H.264), diğerlerinde WebM.
+- **Discord bildirimi:** Her yeni dublajda Discord kanalına sahne adı, seslendirenler ve link içeren bir mesaj gider. Supabase içinden gönderilir (pg_net); webhook adresi tarayıcıya hiç ulaşmaz.
+- `docs/rozet-gorselleri.md`: kendi rozet görsellerini üretmek için stil rehberi ve promptlar.
+
+### Veritabanı
+- Yeni: `dub_votes`, `user_badges`, `app_settings`; `recordings.effect`, `dub_recordings.effect`.
+- Yeni fonksiyonlar: `set_recording_effect`, `cast_vote`, `badge_stats`, `discord_test`.
+- **Mevcut kurulum için:** `supabase/migrations/004_efekt_oylama_rozet_discord.sql` dosyasını bir kez çalıştır.
+
+## 0.3.1 — 1 Ekim 2026
+
+### Düzeltmeler
+- **Lobide "Seç" tepki vermiyordu:** Seçim kaydediliyordu ama ekran sadece canlı güncelleme gelince yenileniyordu. Artık her işlemden (seç, bırak, sahne değiştir, başlat, hazırım, final, yeni tur) sonra oda anında yeniden yükleniyor.
+- Lobideki hata mesajları sayfanın altından karakter listesinin üstüne taşındı.
+- Veritabanında bir fonksiyon/tablo eksikse (migration çalıştırılmamışsa) teknik hata yerine hangi dosyanın çalıştırılması gerektiği yazıyor.
+
 ## 0.3.0 — 1 Ekim 2026
 
 ### Yeni

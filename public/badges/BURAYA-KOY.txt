@@ -1,0 +1,3 @@
+Kendi rozet görsellerini buraya koy: <rozet-id>.png (512x512, şeffaf).
+Sonra lib/badges.ts içindeki CUSTOM_BADGE_IMAGES listesine id'yi ekle.
+Ayrıntılar: docs/rozet-gorselleri.md

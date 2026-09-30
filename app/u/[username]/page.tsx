@@ -10,6 +10,8 @@ import { refreshMe, useMe } from "@/lib/auth";
 import { compatLabel, compatPercent, currentStreak, levelInfo, levelTitle, streakDoneToday } from "@/lib/progress";
 import { errMsg, sb } from "@/lib/supabase";
 import type { Profile } from "@/lib/types";
+import BadgeIcon from "@/components/BadgeIcon";
+import { computeBadges, featuredBadges, TIER_LABEL, type BadgeState, type BadgeStats } from "@/lib/badges";
 
 type Compat = { partner: string; username: string; display_name: string; color: string; shared_dubs: number; shared_likes: number; score: number };
 type Row = { lines: number; dubs: DubCardData | null };
@@ -22,6 +24,7 @@ export default function ProfilePage() {
   const [lines, setLines] = useState(0);
   const [compat, setCompat] = useState<Compat[]>([]);
   const [myCompat, setMyCompat] = useState<Compat | null>(null);
+  const [badges, setBadges] = useState<BadgeState[] | null>(null);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,10 +34,18 @@ export default function ProfilePage() {
       if (error) throw error;
       setProfile((p as Profile) ?? null);
       if (!p) return;
-      const [{ data: rows }, { data: c }] = await Promise.all([
+      const [{ data: rows }, { data: c }, { data: st }] = await Promise.all([
         sb().from("dub_participants").select(`lines, dubs(${DUB_CARD_SELECT})`).eq("user_id", p.id),
         sb().rpc("compat_for", { p_user: p.id }),
+        sb().rpc("badge_stats", { p_user: p.id }),
       ]);
+      // Rozetler bağımsız: istatistik alınamazsa (ör. migration 004 yoksa) sadece rozet bölümü gizlenir
+      try {
+        const bs = st as BadgeStats | null;
+        setBadges(bs && typeof bs === "object" && Array.isArray(bs.special) ? computeBadges(bs) : []);
+      } catch {
+        setBadges([]);
+      }
       const list = ((rows as unknown as Row[]) ?? []).filter((r) => r.dubs).sort((a, b) => b.dubs!.created_at.localeCompare(a.dubs!.created_at));
       setDubs(list.map((r) => r.dubs!));
       setLines(list.reduce((s, r) => s + r.lines, 0));
@@ -91,7 +102,15 @@ export default function ProfilePage() {
         <div className="flex items-center gap-4">
           <Avatar name={p.display_name} color={p.color} size={72} />
           <div className="min-w-0">
-            <h1 className="truncate text-2xl font-semibold tracking-tight sm:text-[28px]">{p.display_name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-2xl font-semibold tracking-tight sm:text-[28px]">{p.display_name}</h1>
+              {badges &&
+                featuredBadges(badges).map((b) => (
+                  <span key={b.id} title={`${b.name}${b.note ? " · " + b.note : ""} — ${b.desc}`}>
+                    <BadgeIcon id={b.id} tier={b.tier} icon={b.icon} size={28} />
+                  </span>
+                ))}
+            </div>
             <p className="mt-0.5 text-sm text-muted">
               @{p.username} · {new Date(p.created_at).toLocaleDateString("tr-TR", { month: "long", year: "numeric" })} tarihinden beri
             </p>
@@ -150,6 +169,8 @@ export default function ProfilePage() {
         <Stat label="Dublaj" value={dubs.length} icon={<Clapperboard className="size-4" />} sub={`${lines} replik seslendirdi`} />
         <Stat label="Beğeni" value={likes} icon={<Heart className="size-4" />} sub="dublajlarının toplamı" />
       </section>
+
+      {badges && badges.length > 0 && <BadgeGrid badges={badges} isMe={!!isMe} />}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* Dublajlar */}
@@ -220,6 +241,7 @@ export default function ProfilePage() {
               <li>Her partner için +10 XP (en çok 5)</li>
               <li>Günün ilk sahnesi: +20 XP + seri × 5 (en çok 50)</li>
               <li>Dublajın beğenilince: +5 XP</li>
+              <li>Oylamada aldığın her oy: +10 XP</li>
             </ul>
           </div>
         </aside>
@@ -227,6 +249,50 @@ export default function ProfilePage() {
 
       {editing && isMe && <EditProfile profile={p} onClose={() => setEditing(false)} />}
     </main>
+  );
+}
+
+function BadgeGrid({ badges, isMe }: { badges: BadgeState[]; isMe: boolean }) {
+  const [all, setAll] = useState(false);
+  const earned = badges.filter((b) => b.earned);
+  // Kazanılmamış özel rozetleri gösterme (onlar elle verilir); diğerlerini ilerlemesiyle göster
+  const locked = badges.filter((b) => !b.earned && !b.special);
+  const shown = all ? [...earned, ...locked] : [...earned, ...locked.sort((a, b) => b.current / b.goal - a.current / a.goal).slice(0, Math.max(0, 8 - earned.length))];
+  return (
+    <section className="mt-8">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-medium">
+          Rozetler <span className="ml-1 font-mono text-xs text-muted">{earned.length}/{earned.length + locked.length}</span>
+        </h2>
+        {locked.length > 0 && (
+          <button className="text-xs text-muted hover:text-fg" onClick={() => setAll((a) => !a)}>
+            {all ? "Daha az göster" : "Tümünü göster"}
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {shown.map((b) => (
+          <div key={b.id} className={cx("panel flex items-center gap-3 p-3", !b.earned && "border-dashed")}>
+            <BadgeIcon id={b.id} tier={b.tier} icon={b.icon} size={48} locked={!b.earned} />
+            <div className="min-w-0 flex-1">
+              <p className={cx("truncate text-sm font-medium", !b.earned && "text-fg-2")}>{b.name}</p>
+              <p className="line-clamp-2 text-[11px] leading-snug text-muted">{b.note ?? b.desc}</p>
+              {b.earned ? (
+                <p className="mt-1 font-mono text-[10px] tracking-wide text-muted uppercase">{TIER_LABEL[b.tier]}</p>
+              ) : (
+                <div className="mt-1.5 flex items-center gap-2">
+                  <Progress value={b.current / b.goal} className="h-0.5" />
+                  <span className="shrink-0 font-mono text-[10px] text-muted">
+                    {b.current}/{b.goal}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      {isMe && earned.length === 0 && <p className="mt-3 text-xs text-muted">İlk dublajını tamamlayınca ilk rozetini alırsın.</p>}
+    </section>
   );
 }
 

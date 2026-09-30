@@ -3,14 +3,16 @@
 import { Circle, Music, Pause, Play, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { btn, Button, cx, IconButton, Notice, PageHeader, Spinner, Swatch } from "@/components/ui";
+import { btn, Button, cx, IconButton, Notice, PageHeader, Progress, Spinner, Swatch } from "@/components/ui";
 import { ensureUser, errMsg, publicUrl, sb } from "@/lib/supabase";
+import { compressionSupported, compressVideo, fmtMB } from "@/lib/compress";
 import { fmtTime, MAX_ROLES, ROLE_COLORS, sortLines, type SceneFull, type SceneLine, type SceneRole } from "@/lib/types";
 
 type EdRole = Pick<SceneRole, "id" | "name" | "color" | "sort">;
 type EdLine = Pick<SceneLine, "id" | "role_id" | "start_time" | "end_time" | "text">;
 
-const MAX_VIDEO_MB = 50;
+const MAX_VIDEO_MB = 50; // Supabase ücretsiz planda dosya başına üst sınır
+const MAX_INPUT_MB = 1024; // sıkıştırılacak ham dosya için makul üst sınır
 
 function extOf(f: File) {
   const m = f.name.match(/\.([a-z0-9]+)$/i);
@@ -37,6 +39,9 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
   const [selRole, setSelRole] = useState<string | null>(initial?.scene_roles[0]?.id ?? null);
 
   const [uploading, setUploading] = useState<string | null>(null);
+  const [compress, setCompress] = useState<{ progress: number; size: number } | null>(null);
+  const [compressNote, setCompressNote] = useState<string | null>(null);
+  const compressAbort = useRef<AbortController | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,12 +71,41 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
   }, []);
 
   // ---------- Yükleme ----------
-  async function upload(file: File, kind: "video" | "bg") {
+  async function upload(original: File, kind: "video" | "bg") {
+    setError(null);
+    setCompressNote(null);
+    let file = original;
+    if (kind === "video") {
+      if (file.size > MAX_INPUT_MB * 1024 * 1024) {
+        setError(`Dosya çok büyük (${fmtMB(file.size)}). Daha kısa bir klip seç.`);
+        return;
+      }
+      // Büyük / yüksek çözünürlüklü videoyu önce tarayıcıda 720p'ye küçült
+      const ac = new AbortController();
+      compressAbort.current = ac;
+      setCompress({ progress: 0, size: file.size });
+      try {
+        const r = await compressVideo(file, { signal: ac.signal, onProgress: (p) => setCompress({ progress: p, size: original.size }) });
+        file = r.file;
+        if (r.compressed) setCompressNote(`${fmtMB(r.before)} → ${fmtMB(r.after)} (720p'ye sıkıştırıldı)`);
+        else if (r.reason === "unsupported" && !compressionSupported()) setCompressNote("Bu tarayıcı sıkıştırmayı desteklemiyor; video olduğu gibi yüklendi.");
+      } catch (e) {
+        setCompress(null);
+        if (ac.signal.aborted) return;
+        setError("Video sıkıştırılamadı: " + errMsg(e));
+        return;
+      } finally {
+        compressAbort.current = null;
+      }
+      setCompress(null);
+    }
     if (file.size > MAX_VIDEO_MB * 1024 * 1024) {
-      setError(`Dosya ${MAX_VIDEO_MB} MB'tan büyük olamaz. Klibi kısalt veya sıkıştır.`);
+      setError(
+        `Dosya ${fmtMB(file.size)}; en fazla ${MAX_VIDEO_MB} MB olabilir.` +
+          (kind === "video" ? " Klibi kısalt ya da Chrome/Edge ile yükle (otomatik sıkıştırma için)." : ""),
+      );
       return;
     }
-    setError(null);
     setUploading(kind);
     try {
       const u = await ensureUser();
@@ -302,7 +336,12 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
                 Sil
               </Button>
             )}
-            <Button variant="primary" icon={<Save className="size-4" />} onClick={save} loading={saving} disabled={!!uploading}>
+            {compress && (
+              <Button size="sm" variant="ghost" onClick={() => compressAbort.current?.abort()}>
+                Sıkıştırmayı iptal et
+              </Button>
+            )}
+            <Button variant="primary" icon={<Save className="size-4" />} onClick={save} loading={saving} disabled={!!uploading || !!compress}>
               Kaydet
             </Button>
           </>
@@ -314,6 +353,11 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
           <Notice>{error}</Notice>
         </div>
       )}
+      {compressNote && (
+        <div className="mb-5">
+          <Notice tone="info">{compressNote}</Notice>
+        </div>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* SOL: video + zaman çizelgesi + replikler */}
@@ -321,19 +365,30 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
           {!videoSrc ? (
             <label className="panel flex aspect-video cursor-pointer flex-col items-center justify-center gap-3 border-dashed text-center transition-colors hover:border-line-strong hover:bg-surface-2">
               <span className="flex size-11 items-center justify-center rounded-lg border border-line bg-surface-2">
-                {uploading === "video" ? <Spinner className="size-5" /> : <Upload className="size-5 text-fg-2" />}
+                {uploading === "video" || compress ? <Spinner className="size-5" /> : <Upload className="size-5 text-fg-2" />}
               </span>
               <span>
-                <span className="block font-medium">{uploading === "video" ? "Yükleniyor" : "Video yükle"}</span>
-                <span className="mt-1 block text-[13px] text-muted">MP4 · en fazla 50 MB · 30 sn–2 dk ideal</span>
+                <span className="block font-medium">
+                  {compress ? `Sıkıştırılıyor %${Math.round(compress.progress * 100)}` : uploading === "video" ? "Yükleniyor" : "Video yükle"}
+                </span>
+                <span className="mt-1 block text-[13px] text-muted">
+                  {compress
+                    ? `${fmtMB(compress.size)} · 720p'ye küçültülüyor, sekmeyi açık tut`
+                    : "Büyük videolar otomatik olarak 720p'ye sıkıştırılır · 30 sn–2 dk ideal"}
+                </span>
               </span>
               <input
                 type="file"
                 accept="video/*"
                 className="hidden"
-                disabled={!!uploading}
+                disabled={!!uploading || !!compress}
                 onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "video")}
               />
+              {compress && (
+                <span className="mt-1 w-56">
+                  <Progress value={compress.progress} />
+                </span>
+              )}
             </label>
           ) : (
             <div className="panel overflow-hidden">
@@ -556,8 +611,8 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
             </div>
             {videoSrc && (
               <label className={btn("secondary", "sm", "cursor-pointer")}>
-                {uploading === "video" ? <Spinner /> : <Upload className="size-3.5" />}
-                Videoyu değiştir
+                {uploading === "video" || compress ? <Spinner /> : <Upload className="size-3.5" />}
+                {compress ? `Sıkıştırılıyor %${Math.round(compress.progress * 100)}` : "Videoyu değiştir"}
                 <input type="file" accept="video/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "video")} />
               </label>
             )}

@@ -61,9 +61,21 @@ export function serverOffset(): Promise<number> {
   return offsetPromise;
 }
 
+const MIGRATION_HINT: [RegExp, string][] = [
+  [/claim_role|release_role|column .*picked/i, "002_karakter_secimi.sql"],
+  [/profiles|dub_|username_available|compat_for|current_dub_id/i, "003_profiller_ve_sosyal.sql"],
+];
+
 export function errMsg(e: unknown): string {
   if (!e) return "Bilinmeyen hata";
-  if (typeof e === "string") return e;
-  if (typeof e === "object" && "message" in e) return String((e as { message: unknown }).message);
-  return String(e);
+  let msg: string;
+  if (typeof e === "string") msg = e;
+  else if (typeof e === "object" && "message" in e) msg = String((e as { message: unknown }).message);
+  else msg = String(e);
+  // Supabase'de fonksiyon/tablo yoksa: migration çalıştırılmamış demektir
+  if (/could not find the function|schema cache|does not exist|PGRST20[2-5]/i.test(msg)) {
+    const file = MIGRATION_HINT.find(([re]) => re.test(msg))?.[1];
+    return `Veritabanı güncel değil. Supabase SQL Editor'da ${file ? `supabase/migrations/${file}` : "supabase/migrations klasöründeki dosyaları"} çalıştır. (${msg})`;
+  }
+  return msg;
 }
