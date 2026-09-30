@@ -24,5 +24,6 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|giris|api/giris).*)"],
+  // /d/… paylaşım sayfaları linke sahip herkese açık
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|giris|api/giris|d/).*)"],
 };

@@ -114,10 +114,10 @@ export function RoleTag({ name, color, className }: { name: string; color: strin
 }
 
 const AVATAR_TONES = ["#f97316", "#38bdf8", "#a3e635", "#f472b6", "#c084fc", "#facc15", "#2dd4bf", "#fb7185"];
-export function Avatar({ name, size = 28 }: { name: string; size?: number }) {
+export function Avatar({ name, size = 28, color }: { name: string; size?: number; color?: string }) {
   let h = 0;
   for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  const tone = AVATAR_TONES[h % AVATAR_TONES.length];
+  const tone = color ?? AVATAR_TONES[h % AVATAR_TONES.length];
   return (
     <span
       className="inline-flex shrink-0 items-center justify-center rounded-full font-semibold"
@@ -185,3 +185,5 @@ export function Logo({ className }: { className?: string }) {
     </span>
   );
 }
+
+export const PROFILE_COLORS = AVATAR_TONES;

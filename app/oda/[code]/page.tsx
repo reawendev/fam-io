@@ -9,7 +9,7 @@ import Recorder from "@/components/room/Recorder";
 import Finale from "@/components/room/Finale";
 import { Button, ButtonLink, cx, Notice, Spinner } from "@/components/ui";
 import { errMsg, sb } from "@/lib/supabase";
-import { useNick } from "@/lib/nickname";
+import { useMe } from "@/lib/auth";
 import type { RoomStatus } from "@/lib/types";
 
 const PHASES: { id: RoomStatus; label: string }[] = [
@@ -21,19 +21,18 @@ const PHASES: { id: RoomStatus; label: string }[] = [
 export default function OdaPage() {
   const { code } = useParams<{ code: string }>();
   const r = useRoom(code);
-  const [nick, setNick] = useNick();
+  const me = useMe();
   const [joining, setJoining] = useState(false);
   const [joinErr, setJoinErr] = useState<string | null>(null);
   const autoTried = useRef(false);
 
   const inRoom = !!r.me && r.players.some((p) => p.user_id === r.me);
 
-  async function join(n: string) {
-    if (!n.trim()) return;
+  async function join() {
     setJoining(true);
     setJoinErr(null);
     try {
-      const { error } = await sb().rpc("join_room", { p_code: code.toUpperCase(), p_nickname: n.trim() });
+      const { error } = await sb().rpc("join_room", { p_code: code.toUpperCase(), p_nickname: "" });
       if (error) throw error;
       await r.reload();
     } catch (e) {
@@ -43,13 +42,13 @@ export default function OdaPage() {
     }
   }
 
-  // Takma ad kayıtlıysa lobiye otomatik katıl
+  // Lobideki odaya otomatik katıl
   useEffect(() => {
-    if (autoTried.current || r.loading || !r.room || inRoom || r.room.status !== "lobby" || !nick.trim()) return;
+    if (autoTried.current || r.loading || !r.room || inRoom || r.room.status !== "lobby") return;
     autoTried.current = true;
-    join(nick);
+    join();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [r.loading, r.room, inRoom, nick]);
+  }, [r.loading, r.room, inRoom]);
 
   if (r.loading)
     return (
@@ -81,13 +80,7 @@ export default function OdaPage() {
   if (!inRoom && room.status === "lobby") {
     return (
       <Center>
-        <form
-          className="panel flex w-full max-w-sm flex-col gap-3 p-5"
-          onSubmit={(e) => {
-            e.preventDefault();
-            join(nick);
-          }}
-        >
+        <div className="panel flex w-full max-w-sm flex-col gap-3 p-5">
           <div>
             <p className="eyebrow">Davet</p>
             <h1 className="mt-2 text-lg font-semibold tracking-tight">
@@ -95,12 +88,11 @@ export default function OdaPage() {
             </h1>
             <p className="mt-1 text-sm text-muted">{r.scene.title}</p>
           </div>
-          <input className="field" placeholder="Takma adın" maxLength={30} value={nick} onChange={(e) => setNick(e.target.value)} autoFocus />
-          <Button variant="primary" loading={joining} disabled={!nick.trim()}>
-            Katıl
+          <Button variant="primary" loading={joining} onClick={join}>
+            {me.status === "in" ? `${me.profile.display_name} olarak katıl` : "Katıl"}
           </Button>
           {joinErr && <Notice>{joinErr}</Notice>}
-        </form>
+        </div>
       </Center>
     );
   }

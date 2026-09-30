@@ -1,11 +1,12 @@
 "use client";
 
-import { Pencil } from "lucide-react";
+import { Flame, LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useNick } from "@/lib/nickname";
-import { Avatar, cx, Logo } from "./ui";
+import { signOut, useMe } from "@/lib/auth";
+import { currentStreak, levelInfo, streakDoneToday } from "@/lib/progress";
+import { Avatar, btn, cx, Logo } from "./ui";
 
 const NAV = [
   { href: "/sahneler", label: "Sahneler" },
@@ -14,16 +15,19 @@ const NAV = [
 
 export default function SiteHeader() {
   const path = usePathname();
-  const [nick, setNick] = useNick();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const me = useMe();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (editing) inputRef.current?.focus();
-  }, [editing]);
+    if (!open) return;
+    const onDown = (e: MouseEvent) => !menuRef.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+  useEffect(() => setOpen(false), [path]);
 
-  // Oda içinde kayıt ekranında dikkati dağıtmamak için sadeleştir
   const inRoom = path.startsWith("/oda/");
 
   return (
@@ -40,10 +44,7 @@ export default function SiteHeader() {
                 <Link
                   key={n.href}
                   href={n.href}
-                  className={cx(
-                    "rounded-md px-2.5 py-1.5 text-[13px] transition-colors",
-                    active ? "bg-surface-2 text-fg" : "text-muted hover:text-fg",
-                  )}
+                  className={cx("rounded-md px-2.5 py-1.5 text-[13px] transition-colors", active ? "bg-surface-2 text-fg" : "text-muted hover:text-fg")}
                 >
                   {n.label}
                 </Link>
@@ -52,43 +53,72 @@ export default function SiteHeader() {
           </nav>
         )}
         <div className="ml-auto flex items-center gap-2">
-          {editing ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (draft.trim()) setNick(draft.trim());
-                setEditing(false);
-              }}
-            >
-              <input
-                ref={inputRef}
-                className="field h-8 w-40 text-[13px]"
-                value={draft}
-                maxLength={30}
-                placeholder="Takma adın"
-                onChange={(e) => setDraft(e.target.value)}
-                onBlur={() => {
-                  if (draft.trim()) setNick(draft.trim());
-                  setEditing(false);
-                }}
-              />
-            </form>
-          ) : (
-            <button
-              className="group flex h-8 items-center gap-2 rounded-md px-2 text-[13px] text-fg-2 transition-colors hover:bg-surface-2 hover:text-fg"
-              onClick={() => {
-                setDraft(nick);
-                setEditing(true);
-              }}
-              title="Takma adını değiştir"
-            >
-              {nick ? <Avatar name={nick} size={22} /> : null}
-              <span className="max-w-32 truncate">{nick || "Takma ad belirle"}</span>
-              <Pencil className="size-3 text-muted opacity-0 transition-opacity group-hover:opacity-100" />
-            </button>
-          )}
+          {me.status === "in" ? (
+            <>
+              <StreakChip streak={currentStreak(me.profile)} safe={streakDoneToday(me.profile)} />
+              <div className="relative" ref={menuRef}>
+                <button
+                  className="flex h-8 items-center gap-2 rounded-md pr-2 pl-1 text-[13px] text-fg-2 transition-colors hover:bg-surface-2 hover:text-fg"
+                  onClick={() => setOpen((o) => !o)}
+                  aria-expanded={open}
+                  aria-haspopup="menu"
+                >
+                  <Avatar name={me.profile.display_name} color={me.profile.color} size={24} />
+                  <span className="hidden max-w-32 truncate sm:inline">{me.profile.display_name}</span>
+                  <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-fg-2">Lv {levelInfo(me.profile.xp).level}</span>
+                </button>
+                {open && (
+                  <div role="menu" className="panel absolute right-0 mt-1.5 w-48 overflow-hidden p-1 shadow-xl shadow-black/40">
+                    <Link role="menuitem" href={`/u/${me.profile.username}`} className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2">
+                      <UserRound className="size-4 text-muted" /> Profilim
+                    </Link>
+                    <button
+                      role="menuitem"
+                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-surface-2"
+                      onClick={async () => {
+                        await signOut();
+                        router.push("/");
+                      }}
+                    >
+                      <LogOut className="size-4 text-muted" /> Çıkış yap
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : me.status === "out" ? (
+            <>
+              <Link href={`/hesap?next=${encodeURIComponent(path)}`} className={btn("ghost", "sm")}>
+                Giriş yap
+              </Link>
+              <Link href={`/hesap?mod=kayit&next=${encodeURIComponent(path)}`} className={btn("primary", "sm")}>
+                Profil oluştur
+              </Link>
+            </>
+          ) : null}
         </div>
       </div>
     </header>
+  );
+}
+
+function StreakChip({ streak, safe }: { streak: number; safe: boolean }) {
+  return (
+    <span
+      title={
+        streak === 0
+          ? "Seri yok. Bugün bir sahne tamamla, seri başlasın."
+          : safe
+            ? `${streak} günlük seri. Bugün tamamlandı.`
+            : `${streak} günlük seri. Bozulmaması için bugün bir sahne tamamla.`
+      }
+      className={cx(
+        "inline-flex h-7 items-center gap-1 rounded-md px-2 font-mono text-xs",
+        streak === 0 ? "text-muted" : safe ? "bg-accent/10 text-accent" : "bg-surface-2 text-fg-2",
+      )}
+    >
+      <Flame className={cx("size-3.5", streak > 0 && safe && "fill-accent/30")} />
+      {streak}
+    </span>
   );
 }

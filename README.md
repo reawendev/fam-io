@@ -15,7 +15,7 @@ Herkes karakterini seçer, repliklerini kaydeder, final **herkesin ekranında ay
 ![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
 ![three.js](https://img.shields.io/badge/three.js-000000?style=for-the-badge&logo=threedotjs&logoColor=white)
 
-**Ücretsiz · Filigransız · Kayıt gerektirmez**
+**Ücretsiz · Filigransız · Profil, seri ve level sistemiyle**
 
 </div>
 
@@ -34,6 +34,12 @@ Ekran görüntüleri: docs/ klasörüne koyup aşağıdaki satırların yorumunu
 
 | | |
 |---|---|
+| 👤 **Profiller** | Kullanıcı adı + şifre ile profil. Dublajların, level'in, serin ve en uyumlu partnerlerin profilinde. |
+| 🔥 **Günlük seri** | Her gün bir sahne tamamla, seri büyüsün. Günün ilk sahnesi bonus XP verir. |
+| 🏆 **Level ve XP** | Sahne tamamla, replik seslendir, beğeni topla; level atla. |
+| 💞 **Uyum** | Birlikte yaptığınız sahnelere ve aldıkları beğenilere göre arkadaşlarınla uyum yüzden. |
+| 💬 **Beğeni ve yorum** | Dublajlara beğeni ve yorum bırak, canlı güncellenir. |
+| 🔗 **Paylaşım linki** | Her dublajın herkese açık bir sayfası var; hesabı olmayan da izleyebilir. |
 | 🎭 **Karakter seçimi** | Herkes lobide istediği karakteri seçer; seçilmeyenler başlarken rastgele dağıtılır. |
 | 🎧 **Orijinali dinle** | Kayıttan önce repliğin orijinal sesini dinle, benzer bir replik uydur. |
 | 🎬 **Replik bazlı kayıt** | 3-2-1 geri sayım, altyazı ve ilerleme çubuğu. Geri sayım sırasındaki sesler finale girmez. |
@@ -78,7 +84,7 @@ flowchart LR
 ## 🛠️ Teknolojiler
 
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4
-- **Backend:** Supabase (Postgres + RLS, Realtime, Storage, anonim kimlik doğrulama)
+- **Backend:** Supabase (Postgres + RLS, Realtime, Storage, Auth)
 - **Medya:** MediaRecorder API, Web Audio API, Canvas captureStream, HTML5 Video
 - **3D:** three.js (prosedürel, model dosyası yok)
 - **Dağıtım:** Vercel
@@ -89,13 +95,13 @@ flowchart LR
 
 1. [supabase.com](https://supabase.com) üzerinde yeni bir proje oluştur (ücretsiz plan yeterli).
 2. **SQL Editor**'a `supabase/schema.sql` dosyasının tamamını yapıştır ve **Run**'a bas.
-3. **Authentication → Sign In / Providers → "Allow anonymous sign-ins"** seçeneğini aç.
+3. **Authentication → Sign In / Providers → Email** altında **"Confirm email" seçeneğini kapat.** (Kullanıcı adı + şifre ile giriş için gerekli; hiç e-posta gönderilmez.) "Allow new users to sign up" açık kalmalı.
 4. **Project Settings → API** sayfasından `Project URL` ve `anon public` anahtarını kopyala.
 
 ### 2. Yerel geliştirme
 
 ```bash
-git clone https://github.com/reawendev/fam-io.git
+git clone https://github.com/<kullanici-adi>/fam-io.git
 cd fam-io
 cp .env.example .env.local   # Supabase bilgilerini doldur
 npm install
@@ -110,7 +116,8 @@ npm run dev
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase proje URL'si |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon (public) anahtarı |
-| `SITE_PASSWORD` | *(opsiyonel)* Tanımlanırsa site sadece şifreyi bilenlere açılır |
+| `SITE_PASSWORD` | *(opsiyonel)* Tanımlanırsa site sadece şifreyi bilenlere açılır (paylaşım linkleri hariç) |
+| `NEXT_PUBLIC_AUTH_EMAIL_DOMAIN` | *(opsiyonel)* Kullanıcı adından üretilen gizli e-posta adreslerinin alan adı |
 
 ### 4. Vercel'e deploy (komut satırından)
 
@@ -132,6 +139,27 @@ macOS/Linux'ta: `npx vercel link`, sonra `npm run deploy`.
 Veritabanı değişiklikleri `supabase/migrations/` klasöründe. Eski bir kurulumu güncellerken yeni dosyaları sırayla SQL Editor'da çalıştır.
 Sıfırdan kurulumda sadece `schema.sql` yeterli. Ayrıntılar: [CHANGELOG.md](CHANGELOG.md).
 
+## 🏆 Puan sistemi
+
+| Olay | XP |
+|---|---|
+| Sahne tamamla | 40 |
+| Seslendirdiğin her replik | +10 (en çok 20 replik) |
+| Sahnedeki her partner | +10 (en çok 5) |
+| Günün ilk sahnesi | +20 + seri × 5 (en çok +50) |
+| Dublajın beğenildi | +5 (beğeni geri alınırsa −5) |
+
+- **Level:** 1→2 için 100 XP, sonraki her level 50 XP daha fazla ister.
+- **Seri:** En az bir replik kaydettiğin bir sahne finale ulaşınca o gün sayılır (İstanbul saati). Bir gün atlarsan sıfırlanır.
+- **Uyum:** Birlikte tamamlanan sahne başına +10, o sahnelerin aldığı beğeni başına +3 puan; yüzdeye çevrilir.
+- Bir odada finali tekrar oynatmak yeni XP vermez; her tur bir kez sayılır.
+
+> **Şifresini unutan bir arkadaşın için** Supabase SQL Editor'da (kullanıcı adını ve yeni şifreyi değiştir):
+> ```sql
+> update auth.users set encrypted_password = extensions.crypt('yeni-sifre', extensions.gen_salt('bf'))
+>  where email = 'kullaniciadi@users.fam-io.app';
+> ```
+
 ## 🎞️ Sahne hazırlama ipuçları
 
 - **30 sn – 2 dk** arası, 720p MP4 klipler idealdir (dosya sınırı 50 MB).
@@ -146,7 +174,10 @@ Sıfırdan kurulumda sadece `schema.sql` yeterli. Ayrıntılar: [CHANGELOG.md](C
 ```
 fam-io/
 ├── app/
-│   ├── page.tsx                 # Ana sayfa: takma ad, oda kur / katıl
+│   ├── page.tsx                 # Ana sayfa: oda kur / katıl, son dublajlar
+│   ├── hesap/                   # Giriş yap / profil oluştur
+│   ├── u/[username]/            # Profil: level, seri, dublajlar, uyum
+│   ├── d/[id]/                  # Herkese açık dublaj sayfası (beğeni, yorum, indir)
 │   ├── sahneler/                # Sahne kütüphanesi ve editör
 │   ├── oda/[code]/page.tsx      # Oda: lobi → kayıt → final
 │   ├── giris/ + api/giris/      # Opsiyonel site şifresi
@@ -154,6 +185,8 @@ fam-io/
 ├── components/
 │   ├── ui.tsx                   # Ortak arayüz bileşenleri (Button, Panel, RoleTag…)
 │   ├── SceneEditor.tsx          # Video yükleme, karakterler, replik işaretleme
+│   ├── DubView.tsx              # Dublaj oynatıcı + beğeni + yorum
+│   ├── DubCard.tsx              # Dublaj kartı (akış ve profil)
 │   ├── landing/DubbingMachine3D.tsx  # Ana sayfadaki 3D makine
 │   └── room/
 │       ├── useRoom.ts           # Oda durumu + Supabase Realtime
@@ -163,7 +196,9 @@ fam-io/
 ├── lib/
 │   ├── player.ts                # DubPlayer: senkron oynatma + replik kırpma
 │   ├── exporter.ts              # Tarayıcıda MP4/WebM üretimi
-│   ├── supabase.ts              # İstemci, anonim giriş, sunucu saat farkı
+│   ├── supabase.ts              # İstemci, sunucu saat farkı
+│   ├── auth.ts                  # Kullanıcı adı + şifre, oturum/profil store'u
+│   ├── progress.ts              # Level, seri, uyum hesapları
 │   └── types.ts
 ├── supabase/schema.sql          # Tablolar, RLS, RPC fonksiyonları, storage
 ├── supabase/migrations/         # Mevcut kurulumlar için güncellemeler

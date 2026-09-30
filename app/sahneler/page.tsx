@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, ButtonLink, Notice, PageHeader, RoleTag, Spinner } from "@/components/ui";
 import { ensureUser, errMsg, publicUrl, sb } from "@/lib/supabase";
-import { getNick } from "@/lib/nickname";
 import { fmtTime, type SceneFull } from "@/lib/types";
 
 export default function Sahneler() {
@@ -36,16 +35,11 @@ export default function Sahneler() {
   }, []);
 
   async function createRoom(sceneId: string) {
-    const nick = getNick().trim();
-    if (!nick) {
-      setError("Önce sağ üstten bir takma ad belirle.");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
+    await ensureUser();
     setBusy(sceneId);
     setError(null);
     try {
-      const { data, error } = await sb().rpc("create_room", { p_scene: sceneId, p_nickname: nick });
+      const { data, error } = await sb().rpc("create_room", { p_scene: sceneId, p_nickname: "" });
       if (error) throw error;
       router.push(`/oda/${data}`);
     } catch (e) {

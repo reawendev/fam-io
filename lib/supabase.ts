@@ -20,26 +20,20 @@ export function sb(): SupabaseClient {
   return client;
 }
 
-let userPromise: Promise<User> | null = null;
-
-/** Anonim oturum açar (kayıt/şifre yok). Aynı tarayıcı hep aynı kullanıcıdır. */
-export function ensureUser(): Promise<User> {
-  if (!userPromise) {
-    userPromise = (async () => {
-      const { data } = await sb().auth.getSession();
-      if (data.session?.user) return data.session.user;
-      const { data: d, error } = await sb().auth.signInAnonymously();
-      if (error || !d.user) {
-        userPromise = null;
-        throw new Error(
-          "Anonim giriş başarısız. Supabase > Authentication > Sign In / Providers > 'Allow anonymous sign-ins' açık mı? " +
-            (error?.message ?? ""),
-        );
-      }
-      return d.user;
-    })();
+/**
+ * Giriş yapmış (profilli) kullanıcıyı döndürür. Oturum yoksa giriş sayfasına yönlendirir.
+ * Eski sürümden kalan anonim oturumlar kapatılır.
+ */
+export async function ensureUser(): Promise<User> {
+  const { data } = await sb().auth.getSession();
+  const user = data.session?.user;
+  if (user && !user.is_anonymous) return user;
+  if (user?.is_anonymous) await sb().auth.signOut();
+  if (typeof window !== "undefined") {
+    const next = window.location.pathname + window.location.search;
+    window.location.replace(`/hesap?next=${encodeURIComponent(next)}`);
   }
-  return userPromise;
+  throw new Error("Devam etmek için giriş yapman gerekiyor.");
 }
 
 export function publicUrl(bucket: "scenes" | "recordings", path: string) {

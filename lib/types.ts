@@ -38,6 +38,7 @@ export type Room = {
   host_id: string;
   status: RoomStatus;
   finale_at: string | null;
+  current_dub_id?: string | null;
   created_at: string;
 };
 
@@ -73,3 +74,37 @@ export function fmtTime(s: number) {
   const r = s - m * 60;
   return `${m}:${r < 10 ? "0" : ""}${r.toFixed(1)}`;
 }
+
+export type Profile = {
+  id: string;
+  username: string;
+  display_name: string;
+  bio: string | null;
+  color: string;
+  xp: number;
+  streak: number;
+  best_streak: number;
+  last_streak_day: string | null;
+  created_at: string;
+};
+
+export type ProfileLite = Pick<Profile, "username" | "display_name" | "color">;
+
+export type Dub = {
+  id: string;
+  room_id: string | null;
+  scene_id: string;
+  created_by: string | null;
+  like_count: number;
+  comment_count: number;
+  created_at: string;
+};
+
+export type DubComment = {
+  id: string;
+  dub_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  profiles?: ProfileLite | null;
+};

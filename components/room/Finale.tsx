@@ -1,8 +1,10 @@
 "use client";
 
-import { Dices, Download, Play, RotateCcw, Square, Volume2 } from "lucide-react";
+import { Check, Dices, Download, ExternalLink, Play, RotateCcw, Share2, Sparkles, Square, Volume2 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, cx, Notice, Progress } from "@/components/ui";
+import { btn, Button, cx, Notice, Progress } from "@/components/ui";
+import { refreshMe } from "@/lib/auth";
 import { errMsg, publicUrl, sb, serverOffset } from "@/lib/supabase";
 import { audioUnlocked, DubPlayer, recItem, unlockAudio, type DubItem } from "@/lib/player";
 import { downloadBlob, exportDub, exportSupported, slugify } from "@/lib/exporter";
@@ -241,6 +243,8 @@ export default function Finale({ room, scene, me, players, assignments, isHost }
 
       {error && <Notice tone="warn">{error}</Notice>}
 
+      {room.current_dub_id && <DubSaved dubId={room.current_dub_id} me={me} />}
+
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
         <div className="panel flex flex-col gap-3 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -337,6 +341,55 @@ function Credits({
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function DubSaved({ dubId, me }: { dubId: string; me: string }) {
+  const [xp, setXp] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    sb()
+      .from("dub_participants")
+      .select("xp_gained")
+      .eq("dub_id", dubId)
+      .eq("user_id", me)
+      .maybeSingle()
+      .then(({ data }) => setXp(data ? data.xp_gained : null));
+    refreshMe().catch(() => {});
+  }, [dubId, me]);
+
+  async function share() {
+    const url = `${location.origin}/d/${dubId}`;
+    try {
+      if (navigator.share && /Mobi|Android|iPhone/i.test(navigator.userAgent)) await navigator.share({ title: "fam-io dublajı", url });
+      else {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1800);
+      }
+    } catch {}
+  }
+
+  return (
+    <div className="panel fade-up flex flex-wrap items-center justify-between gap-3 p-4">
+      <div className="flex items-center gap-3">
+        <span className="flex size-9 items-center justify-center rounded-lg bg-accent/10 text-accent">
+          <Sparkles className="size-4" />
+        </span>
+        <div>
+          <p className="text-sm font-medium">{xp != null ? `+${xp} XP kazandın` : "Dublaj kaydedildi"}</p>
+          <p className="text-xs text-muted">Bu dublaj katılan herkesin profiline işlendi. Linkle paylaşabilir, beğeni ve yorum toplayabilirsin.</p>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <Button size="sm" icon={copied ? <Check className="size-3.5 text-ok" /> : <Share2 className="size-3.5" />} onClick={share}>
+          {copied ? "Kopyalandı" : "Paylaş"}
+        </Button>
+        <Link href={`/d/${dubId}`} className={btn("primary", "sm")}>
+          <ExternalLink className="size-3.5" /> Dublaj sayfası
+        </Link>
+      </div>
     </div>
   );
 }
