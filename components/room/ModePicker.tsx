@@ -1,12 +1,13 @@
 "use client";
 
-import { Check, Drama, Link2, PenLine, Shuffle, Swords, Users, Volume2, VenetianMask } from "lucide-react";
+import { Check, Drama, Ear, Link2, PenLine, Shuffle, Swords, Users, Volume2, VenetianMask } from "lucide-react";
 import { MODES, MOD_INFO } from "@/lib/modes";
 import type { GameMod, GameMode, Room } from "@/lib/types";
 import { cx } from "@/components/ui";
 
-const MODE_ICON: Record<GameMode, React.ReactNode> = {
+export const MODE_ICON: Record<GameMode, React.ReactNode> = {
   klasik: <Users className="size-4" />,
+  kulak: <Ear className="size-4" />,
   zincir: <Link2 className="size-4" />,
   senarist: <PenLine className="size-4" />,
   duello: <Swords className="size-4" />,
@@ -53,7 +54,7 @@ export default function ModePicker({
               role="radio"
               aria-checked={on}
               disabled={!isHost || busy}
-              onClick={() => onChange(m.id, m.id === "zincir" || m.id === "duello" ? [] : mods)}
+              onClick={() => onChange(m.id, m.id === "zincir" || m.id === "duello" || m.id === "kulak" ? [] : mods)}
               className={cx(
                 "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors disabled:cursor-default",
                 on ? "border-accent/60 bg-accent/[0.08]" : "border-line bg-bg",
@@ -63,6 +64,7 @@ export default function ModePicker({
             >
               <span className={cx("flex items-center gap-1.5 text-sm font-medium", on && "text-accent")}>
                 {MODE_ICON[m.id]} {m.name}
+                {!m.scene && <span className="rounded bg-ok/10 px-1 py-px text-[10px] font-normal text-ok">sahnesiz</span>}
               </span>
               <span className="text-[11px] leading-snug text-muted">{m.short}</span>
             </button>

@@ -5,21 +5,28 @@ import { useEffect, useRef, useState } from "react";
 import MicWave from "./MicWave";
 import { Button } from "./ui";
 
-const MAX_SEC = 5;
-
 /**
- * İmza sesi kaydedici: en fazla 5 saniye. Kaydı dinletir, onaylanınca onChange(blob) çağırır.
- * value: mevcut sesin adresi (varsa), onRemove: sesi kaldır.
+ * Kısa ses kaydedici (imza sesi, kulaktan kulağa): en fazla `max` saniye. Kaydı dinletir, bitince onChange(blob) çağırır.
+ * value: mevcut sesin adresi (varsa), onRemove: sesi kaldır (verilmezse "Kaldır" düğmesi görünmez).
  */
 export default function VoiceRecorder({
   value,
   onChange,
   onRemove,
+  max = 5,
+  label,
+  disabled,
+  size = "sm",
 }: {
   value: string | null;
   onChange: (blob: Blob, ext: string) => void;
-  onRemove: () => void;
+  onRemove?: () => void;
+  max?: number;
+  label?: string;
+  disabled?: boolean;
+  size?: "sm" | "md";
 }) {
+  const MAX_SEC = max;
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [left, setLeft] = useState(MAX_SEC);
   const [url, setUrl] = useState<string | null>(value);
@@ -91,20 +98,21 @@ export default function VoiceRecorder({
           <span className="rec-dot size-2 rounded-full bg-rec" />
           <MicWave stream={stream} bars={24} className="h-6 flex-1" />
           <span className="w-8 text-right font-mono text-xs text-fg-2">{left.toFixed(1)}</span>
-          <Button size="sm" variant="danger" icon={<Square className="size-3.5" />} type="button" onClick={() => mrRef.current?.stop()}>
+          <Button size={size} variant="danger" icon={<Square className="size-3.5" />} type="button" onClick={() => mrRef.current?.stop()}>
             Bitir
           </Button>
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" type="button" variant="rec" icon={url ? <RotateCcw className="size-3.5" /> : <Circle className="size-3 fill-current" />} onClick={start}>
-            {url ? "Yeniden kaydet" : "Kaydet (5 sn)"}
+          <Button size={size} type="button" variant="rec" disabled={disabled} icon={url ? <RotateCcw className="size-3.5" /> : <Circle className="size-3 fill-current" />} onClick={start}>
+            {url ? "Yeniden kaydet" : (label ?? `Kaydet (${MAX_SEC} sn)`)}
           </Button>
           {url && (
             <>
-              <Button size="sm" type="button" icon={playing ? <Square className="size-3.5" /> : <Play className="size-3.5" />} onClick={play}>
-                {playing ? "Durdur" : "Dinle"}
+              <Button size={size} type="button" icon={playing ? <Square className="size-3.5" /> : <Play className="size-3.5" />} onClick={play}>
+                {playing ? "Durdur" : "Kendini dinle"}
               </Button>
+              {onRemove && (
               <Button
                 size="sm"
                 type="button"
@@ -112,11 +120,12 @@ export default function VoiceRecorder({
                 icon={<Trash2 className="size-3.5" />}
                 onClick={() => {
                   setUrl(null);
-                  onRemove();
+                  onRemove?.();
                 }}
               >
                 Kaldır
               </Button>
+              )}
             </>
           )}
         </div>

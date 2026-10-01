@@ -24,6 +24,6 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // /d/… paylaşım sayfaları, paylaşım görselleri ve Discord komut uç noktası şifresiz erişilir
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|giris|api/giris|api/discord|d/|opengraph-image).*)"],
+  // /d/… ve /k/… paylaşım sayfaları, paylaşım görselleri ve Discord komut uç noktası şifresiz erişilir
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|giris|api/giris|api/discord|d/|k/|opengraph-image).*)"],
 };

@@ -15,7 +15,7 @@ const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const ORANGE = 0xff7a1a;
 const EPHEMERAL = 64;
 
-const MODE_NAMES: Record<string, string> = { klasik: "Klasik", zincir: "Kulaktan kulağa", senarist: "Senarist", duello: "Düello" };
+const MODE_NAMES: Record<string, string> = { klasik: "Klasik", kulak: "Kulaktan kulağa", zincir: "Taklit zinciri", senarist: "Senarist", duello: "Düello" };
 
 function hex(s: string) {
   const out = new Uint8Array(s.length / 2);
@@ -125,9 +125,12 @@ export async function POST(req: Request) {
       return reply({
         embeds: [
           {
-            title: `🎬 ${data!.title}`,
+            title: `${mode === "kulak" ? "👂" : "🎬"} ${data!.title}`,
             url,
-            description: `**${data!.host}** bir dublaj odası kurdu. Gel, karakterini seç!`,
+            description:
+              mode === "kulak"
+                ? `**${data!.host}** bir kulaktan kulağa oyunu kurdu. Sahne yok; gel, fısıltıyı sen de bozalım!`
+                : `**${data!.host}** bir dublaj odası kurdu. Gel, karakterini seç!`,
             color: ORANGE,
             fields: [
               { name: "Oda kodu", value: `\`${data!.code}\``, inline: true },

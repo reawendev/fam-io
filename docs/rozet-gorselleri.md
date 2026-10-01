@@ -128,6 +128,8 @@ Prompt yapısı: **Ortak stil + Seviye çerçevesi + Motif**
 
 | id | Ad | Seviye | Motif |
 |---|---|---|---|
+| `kulak_misafiri` | Kulak Misafiri | Bronz | `a single cupped ear with three small sound waves entering it` |
+| `fisildayan` | Fısıldayan | Gümüş | `two stylized profiles facing each other with a curly whisper line passing between their lips and ear` |
 | `zincir_halkasi` | Zincir Halkası | Bronz | `three chain links where the middle one is shaped like a speech bubble` |
 | `senarist` | Senarist | Bronz | `a fountain pen writing on a tiny film script page` |
 | `foley_ustasi` | Foley Ustası | Bronz | `a pair of coconut shells and a small door hinge with sound lines` |

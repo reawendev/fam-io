@@ -1,5 +1,22 @@
 # Değişiklik notları
 
+## 0.7.0 — 1 Ekim 2026
+
+### Oyun kur (`/oyna`)
+- Sahne seçmeden oda kurulabilir: önce modu seç, oda hemen açılır. Sahne gereken modlarda rastgele bir sahne gelir; oda sahibi lobide listeden ya da 🎲 düğmesiyle değiştirir.
+- Menüde **Oyna**, ana sayfada **Oyun kur** düğmesi. Discord `/dublaj` komutuna "Kulaktan kulağa (sahnesiz)" seçeneği eklendi.
+
+### Yeni mod: Kulaktan kulağa (sahnesiz)
+- Herkese gizli, komik bir cümle düşer (40 hazır cümle; "Başka cümle" ya da "Kendim yazayım"). İlk turda herkes cümlesini sesli okur.
+- Sonraki turlarda herkes başka bir zincirde oynar: metni görmeden, önceki kişinin kaydını en fazla 2 kez dinleyip tekrarlar. Son turda duyduğunu yazar. N kişi = N zincir = N tur; kimse sıra beklemez.
+- Final: her zincir baştan çalınır, sonunda ilk cümle ile son tahmin açılır. Sonuçlar `/k/<id>` linkiyle paylaşılır ve oda silinse de kalır.
+- Oyuncu takılırsa oda sahibi "Bekleyenleri atla" der; çıkarılan oyuncunun adımları otomatik atlanır ve sonraki kişi bir önceki kaydı duyar.
+- Kayıt gönderen herkes +10 XP. Yeni rozetler: Kulak Misafiri, Fısıldayan.
+- Sahneli eski mod artık **Taklit zinciri** adını taşıyor (kuralları aynı).
+
+### Güncelleme
+- Supabase SQL Editor'da `supabase/migrations/007_oyun_kur_kulaktan_kulaga.sql` dosyasını bir kez çalıştır (006'dan sonra).
+
 ## 0.6.0 — 1 Ekim 2026
 
 ### Oyun modları

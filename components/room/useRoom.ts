@@ -14,9 +14,10 @@ export function useRoom(code: string) {
   const [loading, setLoading] = useState(true);
   const sceneIdRef = useRef<string | null>(null);
 
-  const loadScene = useCallback(async (sceneId: string) => {
+  const loadScene = useCallback(async (sceneId: string | null) => {
     if (sceneIdRef.current === sceneId) return;
     sceneIdRef.current = sceneId;
+    if (!sceneId) return setScene(null);
     const { data, error } = await sb()
       .from("scenes")
       .select(SCENE_FULL_SELECT)

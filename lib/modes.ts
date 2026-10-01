@@ -1,20 +1,30 @@
 import type { GameMod, GameMode } from "./types";
 
 /** Oyun modları (arayüz metinleri). Kurallar veritabanında: start_game, save_recording, duel_* */
-export const MODES: { id: GameMode; name: string; short: string; desc: string; min: number }[] = [
+export const MODES: { id: GameMode; name: string; short: string; desc: string; min: number; scene: boolean }[] = [
   {
     id: "klasik",
     name: "Klasik",
     short: "Herkes kendi karakterini seslendirir",
     desc: "Karakterini seç, repliklerini kaydet, final hep birlikte izlenir. Aşağıdaki eklerle renklendirebilirsin.",
     min: 1,
+    scene: true,
+  },
+  {
+    id: "kulak",
+    name: "Kulaktan kulağa",
+    short: "Sahnesiz: cümle ağızdan ağıza değişir",
+    desc: "Sahne yok. Herkes gizli bir cümleyi sesli okur; sonraki kişi sadece o sesi dinleyip tekrarlar, sonuncu duyduğunu yazar. Herkesin cümlesi aynı anda dolaşır, kimse beklemez. Finalde baştaki cümleyle sondaki hali karşılaştırılır.",
+    min: 2,
+    scene: false,
   },
   {
     id: "zincir",
-    name: "Kulaktan kulağa",
-    short: "Orijinali sadece ilk kişi duyar",
-    desc: "Sırayla oynanır. İlk kişi orijinali dinleyip tüm sahneyi seslendirir; sonraki kişi sadece bir öncekinin kaydını duyar ve onu taklit eder. Sonunda replik bambaşka bir şeye dönüşür.",
+    name: "Taklit zinciri",
+    short: "Sahneyi sırayla taklit edin",
+    desc: "Sırayla oynanır. İlk kişi sahnenin orijinalini dinleyip tüm sahneyi seslendirir; sonraki kişi sadece bir öncekinin kaydını duyar ve onu taklit eder. Sonunda replikler bambaşka bir şeye dönüşür.",
     min: 2,
+    scene: true,
   },
   {
     id: "senarist",
@@ -22,6 +32,7 @@ export const MODES: { id: GameMode; name: string; short: string; desc: string; m
     short: "Önce yaz, sonra seslendir",
     desc: "Önce herkes, kendi seslendirmediği karakterlerin repliklerini parodi olarak yeniden yazar. Sonra bu yeni metinler seslendirilir; jenerikte yazar ve seslendiren birlikte anılır.",
     min: 1,
+    scene: true,
   },
   {
     id: "duello",
@@ -29,6 +40,7 @@ export const MODES: { id: GameMode; name: string; short: string; desc: string; m
     short: "Aynı replikte kafa kafaya, eleme usulü",
     desc: "Oyuncular eşleşir; ikisi aynı repliği seslendirir, diğerleri oylar. Kazanan bir sonraki tura geçer. Şampiyon +50 XP ve kupa alır.",
     min: 2,
+    scene: true,
   },
 ];
 

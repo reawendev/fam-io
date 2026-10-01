@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleHelp, Flame, LogOut, Shield, ShoppingBag, Trophy, UserRound, Users } from "lucide-react";
+import { CircleHelp, Flame, Gamepad2, LogOut, Shield, ShoppingBag, Trophy, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -11,6 +11,7 @@ import { currentStreak, levelInfo, streakDoneToday } from "@/lib/progress";
 import { Avatar, btn, cx, Logo, UserName } from "./ui";
 
 const NAV = [
+  { href: "/oyna", label: "Oyna" },
   { href: "/sahneler", label: "Sahneler" },
   { href: "/liderlik", label: "Liderlik" },
   { href: "/ekipler", label: "Ekipler" },
@@ -77,6 +78,9 @@ export default function SiteHeader() {
                   <div role="menu" className="panel absolute right-0 mt-1.5 w-48 overflow-hidden p-1 shadow-xl shadow-black/40">
                     <Link role="menuitem" href={`/u/${me.profile.username}`} className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2">
                       <UserRound className="size-4 text-muted" /> Profilim
+                    </Link>
+                    <Link role="menuitem" href="/oyna" className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2 md:hidden">
+                      <Gamepad2 className="size-4 text-muted" /> Oyun kur
                     </Link>
                     <Link role="menuitem" href="/liderlik" className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2 md:hidden">
                       <Trophy className="size-4 text-muted" /> Liderlik

@@ -21,7 +21,7 @@ const commands = [
     name: "dublaj",
     description: "fam-io'da yeni bir dublaj odası kur ve kanala davet linki at",
     options: [
-      { type: 3, name: "sahne", description: "Sahne (boş bırakırsan popüler bir sahne seçilir)", required: false, autocomplete: true },
+      { type: 3, name: "sahne", description: "Sahne (boş bırakırsan rastgele; Kulaktan kulağa modunda gerekmez)", required: false, autocomplete: true },
       {
         type: 3,
         name: "mod",
@@ -29,7 +29,8 @@ const commands = [
         required: false,
         choices: [
           { name: "Klasik", value: "klasik" },
-          { name: "Kulaktan kulağa", value: "zincir" },
+          { name: "Kulaktan kulağa (sahnesiz)", value: "kulak" },
+          { name: "Taklit zinciri", value: "zincir" },
           { name: "Senarist", value: "senarist" },
           { name: "Düello", value: "duello" },
         ],

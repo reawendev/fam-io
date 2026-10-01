@@ -123,9 +123,14 @@ export default function Home() {
                 ya da
                 <span className="h-px flex-1 bg-line" />
               </div>
-              <ButtonLink href="/sahneler" variant="primary" className="w-full" icon={<ArrowRight className="size-4" />}>
-                Sahne seç ve oda kur
-              </ButtonLink>
+              <div className="flex gap-2">
+                <ButtonLink href="/oyna" variant="primary" className="flex-1" icon={<ArrowRight className="size-4" />}>
+                  Oyun kur
+                </ButtonLink>
+                <ButtonLink href="/sahneler" className="flex-1">
+                  Sahne seç
+                </ButtonLink>
+              </div>
                 </>
               )}
               {error && (

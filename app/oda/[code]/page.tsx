@@ -14,6 +14,8 @@ import type { GameMode, RoomStatus } from "@/lib/types";
 import Writer from "@/components/room/Writer";
 import DuelArena from "@/components/room/DuelArena";
 import ChainFinale from "@/components/room/ChainFinale";
+import PhoneGame from "@/components/room/PhoneGame";
+import PhoneFinale from "@/components/room/PhoneFinale";
 import { modeName } from "@/lib/modes";
 
 function phasesFor(mode?: GameMode): { id: RoomStatus; label: string }[] {
@@ -22,6 +24,12 @@ function phasesFor(mode?: GameMode): { id: RoomStatus; label: string }[] {
       { id: "lobby", label: "Lobi" },
       { id: "writing", label: "Yazım" },
       { id: "recording", label: "Kayıt" },
+      { id: "finale", label: "Final" },
+    ];
+  if (mode === "kulak")
+    return [
+      { id: "lobby", label: "Lobi" },
+      { id: "recording", label: "Turlar" },
       { id: "finale", label: "Final" },
     ];
   if (mode === "duello")
@@ -87,7 +95,7 @@ export default function OdaPage() {
         </div>
       </Center>
     );
-  if (!r.room || !r.scene || !r.me)
+  if (!r.room || !r.me || (!r.scene && r.room.mode !== "kulak"))
     return (
       <Center>
         <Spinner />
@@ -96,6 +104,8 @@ export default function OdaPage() {
 
   const room = r.room;
   const isHost = room.host_id === r.me;
+  const kulak = room.mode === "kulak";
+  const title = kulak ? "Kulaktan kulağa" : (r.scene?.title ?? "");
 
   if (banned && !inRoom) {
     return (
@@ -125,7 +135,7 @@ export default function OdaPage() {
             <h1 className="mt-2 text-lg font-semibold tracking-tight">
               <span className="font-mono text-accent">{room.code}</span> odasına katıl
             </h1>
-            <p className="mt-1 text-sm text-muted">{r.scene.title}</p>
+            <p className="mt-1 text-sm text-muted">{title}</p>
           </div>
           {room.locked && (
             <p className="flex items-center gap-1.5 text-xs text-amber-200">
@@ -141,17 +151,31 @@ export default function OdaPage() {
     );
   }
 
-  const common = { room, scene: r.scene, me: r.me, players: r.players, assignments: r.assignments, isHost, reload: r.reload };
+  const base = { room, me: r.me, players: r.players, assignments: r.assignments, isHost, reload: r.reload };
+  // Sahne gereken ekranlar: kulak dışındaki modlarda sahne her zaman yüklü
+  const common = { ...base, scene: r.scene! };
 
   return (
     <>
-      <RoomBar code={room.code} title={r.scene.title} status={room.status} locked={!!room.locked} mode={room.mode} />
+      <RoomBar code={room.code} title={kulak ? "" : title} status={room.status} locked={!!room.locked} mode={room.mode} />
       {r.error && (
         <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
           <Notice>{r.error}</Notice>
         </div>
       )}
-      {room.status === "lobby" && <Lobby {...common} />}
+      {room.status === "lobby" && <Lobby {...base} scene={r.scene} />}
+      {kulak && room.status === "recording" &&
+        (inRoom ? (
+          <PhoneGame {...base} />
+        ) : (
+          <Center>
+            <div className="max-w-sm text-center">
+              <p className="font-medium">Bu odada oyun başladı</p>
+              <p className="mt-1 text-sm text-muted">Fısıltılar dolaşıyor. Final başlayınca bu sayfadan izleyebilirsin.</p>
+            </div>
+          </Center>
+        ))}
+      {kulak && room.status === "finale" && <PhoneFinale {...base} />}
       {room.status === "writing" &&
         (inRoom ? (
           <Writer {...common} />
@@ -164,7 +188,7 @@ export default function OdaPage() {
           </Center>
         ))}
       {room.status === "recording" && room.mode === "duello" && <DuelArena {...common} />}
-      {room.status === "recording" && room.mode !== "duello" &&
+      {room.status === "recording" && room.mode !== "duello" && !kulak &&
         (inRoom ? (
           <Recorder {...common} />
         ) : (
@@ -175,7 +199,7 @@ export default function OdaPage() {
             </div>
           </Center>
         ))}
-      {room.status === "finale" &&
+      {room.status === "finale" && !kulak &&
         (room.mode === "duello" ? <DuelArena {...common} /> : room.mode === "zincir" ? <ChainFinale {...common} /> : <Finale {...common} />)}
     </>
   );
@@ -214,8 +238,8 @@ function RoomBar({ code, title, status, locked, mode }: { code: string; title: s
             <Lock className="size-3.5" />
           </span>
         )}
-        <span className="hidden h-4 w-px bg-line sm:block" />
-        <span className="hidden truncate text-sm text-fg-2 sm:block">{title}</span>
+        {title && <span className="hidden h-4 w-px bg-line sm:block" />}
+        {title && <span className="hidden truncate text-sm text-fg-2 sm:block">{title}</span>}
         {mode && mode !== "klasik" && (
           <span className="hidden rounded-md bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent md:inline">{modeName(mode)}</span>
         )}

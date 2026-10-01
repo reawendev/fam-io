@@ -38,6 +38,7 @@ export type BadgeStats = {
   duel_titles?: number;
   card_wins?: number;
   chains?: number;
+  phones?: number;
   scripts?: number;
   foleys?: number;
   items?: number;
@@ -109,7 +110,9 @@ export const BADGES: BadgeDef[] = [
   { id: "hanedan", name: "Hanedan", desc: "5 hafta liderlik tablosunda birinci ol.", tier: "altin", icon: "Castle", metric: (s) => s.week_wins ?? 0, goal: 5 },
 
   // --- Oyun modları ---
-  { id: "zincir_halkasi", name: "Zincir Halkası", desc: "Bir kulaktan kulağa oyununda yer al.", tier: "bronz", icon: "Link2", metric: (s) => s.chains ?? 0, goal: 1 },
+  { id: "kulak_misafiri", name: "Kulak Misafiri", desc: "Bir kulaktan kulağa oyununda yer al.", tier: "bronz", icon: "Ear", metric: (s) => s.phones ?? 0, goal: 1 },
+  { id: "fisildayan", name: "Fısıldayan", desc: "10 kulaktan kulağa oyunu oyna.", tier: "gumus", icon: "Ear", metric: (s) => s.phones ?? 0, goal: 10 },
+  { id: "zincir_halkasi", name: "Zincir Halkası", desc: "Bir taklit zinciri oyununda yer al.", tier: "bronz", icon: "Link2", metric: (s) => s.chains ?? 0, goal: 1 },
   { id: "senarist", name: "Senarist", desc: "Senarist modunda replik yaz.", tier: "bronz", icon: "PenLine", metric: (s) => s.scripts ?? 0, goal: 1 },
   { id: "foley_ustasi", name: "Foley Ustası", desc: "Bir sahnenin efektlerini yap.", tier: "bronz", icon: "Volume2", metric: (s) => s.foleys ?? 0, goal: 1 },
   { id: "kart_ustasi", name: "Kart Ustası", desc: "3 kez kartı en iyi oynayan seçil.", tier: "gumus", icon: "Shuffle", metric: (s) => s.card_wins ?? 0, goal: 3 },

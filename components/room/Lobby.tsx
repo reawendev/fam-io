@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, BellOff, Crown, Link2, Lock, LockOpen, LogOut, Mic, MicOff, Shuffle, Swords, UserX, Volume2 } from "lucide-react";
+import { Bell, BellOff, Crown, Dices, Ear, Link2, Lock, LockOpen, LogOut, Mic, MicOff, Shuffle, Swords, UserX, Volume2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, Button, cx, IconButton, Notice, RoleTag, Swatch, UserName } from "@/components/ui";
@@ -24,7 +24,10 @@ export type RoomProps = {
   reload?: () => Promise<void> | void;
 };
 
-export default function Lobby({ room, scene, me, players, assignments, isHost, reload }: RoomProps) {
+/** Lobi sahnesiz de açılabilir (Kulaktan kulağa) */
+export type LobbyProps = Omit<RoomProps, "scene"> & { scene: SceneFull | null };
+
+export default function Lobby({ room, scene, me, players, assignments, isHost, reload }: LobbyProps) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,12 +36,13 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
   const [heard, setHeard] = useState(false);
   const [sceneList, setSceneList] = useState<Scene[] | null>(null);
 
-  const roles = useMemo(() => [...scene.scene_roles].sort((a, b) => a.sort - b.sort), [scene]);
+  const roles = useMemo(() => [...(scene?.scene_roles ?? [])].sort((a, b) => a.sort - b.sort), [scene]);
+  const lineCount = scene?.scene_lines.length ?? 0;
   const ownerOf = (roleId: string) => assignments.find((a) => a.role_id === roleId)?.user_id;
   const nickOf = (uid?: string) => players.find((p) => p.user_id === uid)?.nickname ?? "?";
   const playerOf = (uid?: string) => players.find((p) => p.user_id === uid);
   const stats = (roleId: string) => {
-    const ls = scene.scene_lines.filter((l) => l.role_id === roleId);
+    const ls = (scene?.scene_lines ?? []).filter((l) => l.role_id === roleId);
     return { n: ls.length, sec: ls.reduce((s, l) => s + (l.end_time - l.start_time), 0) };
   };
   const unclaimed = roles.filter((r) => !ownerOf(r.id)).length;
@@ -47,6 +51,7 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
   const mode: GameMode = room.mode ?? "klasik";
   const mods: GameMod[] = room.mods ?? [];
   const rolesMode = mode === "klasik" || mode === "senarist";
+  const kulak = mode === "kulak";
   const minPlayers = MODES.find((m) => m.id === mode)?.min ?? 1;
   // Başlarken karakter alacak kişi sayısı (tahmini): foley yapan hariç, karakter sayısı kadar
   const actors = Math.min(players.length - (room.foley_user && players.length > 1 ? 1 : 0), roles.length);
@@ -72,7 +77,7 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
     if (!isHost) return;
     sb()
       .from("scenes")
-      .select("*")
+      .select("*, scene_roles!inner(id)")
       .order("created_at", { ascending: false })
       .then(({ data }) => setSceneList((data as Scene[]) ?? []));
   }, [isHost]);
@@ -117,6 +122,9 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
   return (
     <main className="mx-auto grid max-w-6xl gap-5 px-4 py-6 pb-20 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <section className="flex min-w-0 flex-col gap-4 lg:row-span-2">
+        {kulak ? (
+          <KulakIntro players={players.length} />
+        ) : scene ? (
         <div className="panel overflow-hidden">
           <video
             key={scene.id}
@@ -134,6 +142,7 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
               <p className="mt-2 text-xs text-muted">Sahneyi sesiyle izleyip hangi karakteri istediğine karar verebilirsin.</p>
             </div>
             {isHost && sceneList && sceneList.length > 1 && (
+              <div className="flex items-center gap-1.5">
               <label className="flex items-center gap-2 text-xs text-muted">
                 Sahne
                 <select
@@ -149,9 +158,23 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
                   ))}
                 </select>
               </label>
+              <IconButton
+                label="Rastgele sahne"
+                className="size-8"
+                disabled={!!busy}
+                onClick={() => {
+                  const pool = sceneList.filter((s) => s.id !== scene.id);
+                  const pick = pool[Math.floor(Math.random() * pool.length)];
+                  if (pick) rpc("change_scene", { p_room: room.id, p_scene: pick.id }, "dice");
+                }}
+              >
+                <Dices className="size-4" />
+              </IconButton>
+              </div>
             )}
           </div>
         </div>
+        ) : null}
         <ModePicker
           room={room}
           isHost={isHost}
@@ -166,13 +189,15 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
         {!rolesMode ? (
           <div className="panel flex items-start gap-3 p-4">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
-              {mode === "zincir" ? <Link2 className="size-4" /> : <Swords className="size-4" />}
+              {kulak ? <Ear className="size-4" /> : mode === "zincir" ? <Link2 className="size-4" /> : <Swords className="size-4" />}
             </span>
             <div className="text-sm">
-              <p className="font-medium">{mode === "zincir" ? "Herkes tüm sahneyi seslendirir" : "Karakter seçimi yok"}</p>
+              <p className="font-medium">{kulak ? `${players.length} cümle, ${players.length} tur` : mode === "zincir" ? "Herkes tüm sahneyi seslendirir" : "Karakter seçimi yok"}</p>
               <p className="mt-1 text-xs leading-relaxed text-muted">
-                {mode === "zincir"
-                  ? `Başlarken sıra rastgele belirlenir. Sahnede ${roles.length} karakter, ${scene.scene_lines.length} replik var; kısa sahneler bu modda daha eğlenceli.`
+                {kulak
+                  ? "Başlarken sıra rastgele belirlenir. Her turda herkes aynı anda oynar; bir tur, herkes kaydını gönderince biter. Oyun sırasında odaya kimse katılamaz."
+                  : mode === "zincir"
+                  ? `Başlarken sıra rastgele belirlenir. Sahnede ${roles.length} karakter, ${lineCount} replik var; kısa sahneler bu modda daha eğlenceli.`
                   : "Başlarken oyuncular rastgele eşleşir. Her maçta ikiniz aynı repliği seslendirirsiniz, diğerleri oylar. Tek kalan bir tur bay geçer."}
               </p>
             </div>
@@ -342,10 +367,10 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
                 variant="primary"
                 size="lg"
                 loading={busy === "start_game"}
-                disabled={!!busy || players.length < minPlayers || scene.scene_lines.length === 0}
+                disabled={!!busy || players.length < minPlayers || (!kulak && lineCount === 0)}
                 onClick={() => rpc("start_game", { p_room: room.id })}
               >
-                {mode === "duello" ? "Turnuvayı başlat" : mode === "zincir" ? "Zinciri başlat" : mode === "senarist" ? "Yazıma başla" : "Kayda başla"}
+                {kulak ? "Oyunu başlat" : mode === "duello" ? "Turnuvayı başlat" : mode === "zincir" ? "Zinciri başlat" : mode === "senarist" ? "Yazıma başla" : "Kayda başla"}
               </Button>
               {players.length < minPlayers && <p className="text-xs text-amber-200">Bu mod için en az {minPlayers} oyuncu gerekir.</p>}
               {mods.includes("hain") && actors < 3 && rolesMode && (
@@ -390,5 +415,46 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
         </div>
       </aside>
     </main>
+  );
+}
+
+/** Kulaktan kulağa lobisi: sahne yerine nasıl oynandığı */
+function KulakIntro({ players }: { players: number }) {
+  const steps = [
+    { t: "Oku", d: "Herkese gizli, komik bir cümle düşer (istersen kendin yazarsın). Sesli okursun." },
+    { t: "Dinle ve tekrarla", d: "Sonraki turda başkasının kaydını duyarsın; metni görmeden, duyduğun gibi tekrarlarsın." },
+    { t: "Tahmin et", d: "Son kişi duyduğunu yazar. Finalde baştaki cümleyle karşılaştırılır." },
+  ];
+  return (
+    <div className="panel overflow-hidden">
+      <div className="relative flex aspect-[21/9] items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_center,rgba(255,122,26,0.16),transparent_70%)]">
+        <div className="flex items-center gap-2 sm:gap-3" aria-hidden>
+          {Array.from({ length: Math.max(3, Math.min(players, 6)) }, (_, i) => (
+            <span key={i} className="flex items-center gap-2 sm:gap-3">
+              {i > 0 && <span className="h-px w-5 bg-gradient-to-r from-accent/60 to-accent/10 sm:w-8" />}
+              <span
+                className="flex size-10 items-center justify-center rounded-full border border-accent/40 bg-accent/10 text-accent sm:size-12"
+                style={{ opacity: 1 - i * 0.12 }}
+              >
+                <Ear className="size-5" />
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="p-4">
+        <h2 className="font-medium">Kulaktan kulağa</h2>
+        <p className="mt-1 text-sm text-muted">Sahne yok. Bir cümle ağızdan ağıza dolaşır, sonunda bambaşka bir şeye dönüşür.</p>
+        <ol className="mt-4 grid gap-3 sm:grid-cols-3">
+          {steps.map((s, i) => (
+            <li key={s.t} className="rounded-lg border border-line bg-bg p-3">
+              <span className="font-mono text-[11px] text-accent">{i + 1}</span>
+              <p className="mt-1 text-sm font-medium">{s.t}</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted">{s.d}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
   );
 }

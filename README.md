@@ -34,7 +34,7 @@ Ekran görüntüleri: docs/ klasörüne koyup aşağıdaki satırların yorumunu
 
 | | |
 |---|---|
-| 🎲 **Oyun modları** | **Klasik**, **Kulaktan kulağa** (orijinali sadece ilk kişi duyar, herkes bir öncekini taklit eder), **Senarist** (önce replikleri yeniden yaz, sonra seslendir) ve **Düello** (aynı replikte eleme usulü turnuva). |
+| 🎲 **Oyun modları** | **Oyna** sayfasından modu seçip sahne seçmeden oda kur. **Klasik**, **Kulaktan kulağa** (sahnesiz: cümle ağızdan ağıza dolaşır), **Taklit zinciri** (orijinali sadece ilk kişi duyar, herkes bir öncekini taklit eder), **Senarist** (önce replikleri yeniden yaz, sonra seslendir) ve **Düello** (aynı replikte eleme usulü turnuva). |
 | 🃏 **Ekler** | **Zorluk kartları** (fısıldayarak, spiker gibi, ağlayarak…), **Hain** (gizli görevli oyuncuyu bul) ve **Foley ustası** (biri konuşmaz, sahnenin efektlerini yapar). |
 | 👤 **Profiller** | Kullanıcı adı + şifre ile profil, profil fotoğrafı, kapak görseli, 5 saniyelik imza sesi ve ziyaretçi defteri. Dublajların, level'in, serin ve en uyumlu partnerlerin profilinde. |
 | 🛍️ **XP mağazası** | Kazandığın XP ile çerçeve, isim efekti, plaket, giriş sesi ve profil kapağı al. Harcamak level'i düşürmez. |
@@ -70,7 +70,7 @@ Ekran görüntüleri: docs/ klasörüne koyup aşağıdaki satırların yorumunu
 ## 🕹️ Nasıl oynanır?
 
 ```
- 1. Oda kur        →  Kütüphaneden sahne seç, 5 haneli kodu arkadaşlarına at
+ 1. Oda kur        →  "Oyna"dan modu seç (sahne rastgele gelir) ya da kütüphaneden sahne seç; 5 haneli kodu arkadaşlarına at
  2. Karakter seç    →  Lobide herkes istediği karakteri alır
  3. Kaydet          →  Orijinali dinle (O), kaydet (R), beğenmezsen tekrar çek, "Hazırım" de
  4. Final           →  Oda sahibi başlatır, herkes aynı anda ilk kez izler
@@ -160,12 +160,13 @@ Sıfırdan kurulumda sadece `schema.sql` yeterli. Ayrıntılar: [CHANGELOG.md](C
 
 ## 🎲 Oyun modları
 
-Lobide oda sahibi modu ve ekleri seçer.
+Oda iki yoldan kurulur: **Oyna** sayfasından (`/oyna`) önce modu seçersin, sahne gereken modlarda rastgele bir sahne gelir (lobide listeden ya da 🎲 ile değiştirilir); ya da **Sahneler**'den belli bir sahneyle kurarsın. Lobide oda sahibi modu ve ekleri her zaman değiştirebilir.
 
 | Mod | Nasıl oynanır |
 |---|---|
 | **Klasik** | Herkes kendi karakterini seçer ve repliklerini kaydeder; final hep birlikte izlenir. |
-| **Kulaktan kulağa** | Sıra rastgele belirlenir. İlk kişi orijinali dinleyip tüm sahneyi seslendirir. Sonraki kişi orijinali değil, sadece bir öncekinin kaydını duyar (replik metni de gizli) ve onu taklit eder. Final zinciri halka halka çalar; tek bir repliğin nasıl değiştiği de karşılaştırılabilir. |
+| **Kulaktan kulağa** (sahnesiz) | Sahne yok. Herkese gizli, komik bir cümle düşer (40 hazır cümle, "Başka cümle" ya da "Kendim yazayım"); sesli okur. Sonraki turda herkes başka birinin kaydını duyar (metni görmeden, en fazla 2 kez dinleyip) ve tekrarlar; son turda duyduğunu yazar. Herkesin cümlesi aynı anda dolaşır, kimse sıra beklemez. Finalde her zincir baştan çalınır, ilk cümle ile son tahmin açılır; sonuçlar `/k/…` linkiyle paylaşılır. Oyuncu takılırsa oda sahibi "Bekleyenleri atla" der. Kayıt gönderen herkes +10 XP. |
+| **Taklit zinciri** | Sıra rastgele belirlenir. İlk kişi orijinali dinleyip tüm sahneyi seslendirir. Sonraki kişi orijinali değil, sadece bir öncekinin kaydını duyar (replik metni de gizli) ve onu taklit eder. Final zinciri halka halka çalar; tek bir repliğin nasıl değiştiği de karşılaştırılabilir. |
 | **Senarist** | Önce yazım aşaması: herkes, kendi seslendirmediği karakterlerin repliklerini parodi olarak yeniden yazar. Oda sahibi kayda geçirince yeni metinler seslendirilir. |
 | **Düello** | Oyuncular eşleşir; ikisi aynı repliği seslendirir, rakibin kaydı oylama açılana kadar gizli kalır. Diğerleri oylar, oda sahibi oylamayı kapatır, kazanan sonraki tura geçer. |
 
@@ -310,6 +311,8 @@ fam-io/
 │   ├── magaza/                  # XP mağazası
 │   ├── ekipler/ + ekip/[slug]/  # Ekip ligi ve ekip sayfası
 │   ├── api/discord/             # Discord slash komutları
+│   ├── oyna/                    # Oyun kur: mod seç, oda hemen açılsın
+│   ├── k/[id]/                  # Kulaktan kulağa sonuçlarının paylaşım sayfası
 │   ├── oda/[code]/page.tsx      # Oda: lobi → kayıt → final
 │   ├── giris/ + api/giris/      # Opsiyonel site şifresi
 │   └── globals.css
@@ -325,16 +328,19 @@ fam-io/
 │   ├── RewardToaster.tsx        # XP / rozet / level kutlamaları
 │   ├── Onboarding.tsx           # İlk giriş rehberi + tek başına prova
 │   ├── landing/DubbingMachine3D.tsx  # Ana sayfadaki 3D makine
-│   ├── ChainView.tsx            # Kulaktan kulağa sonuç görünümü
+│   ├── ChainView.tsx            # Taklit zinciri sonuç görünümü
+│   ├── PhoneChains.tsx          # Kulaktan kulağa zincir kartları (final + paylaşım)
 │   ├── Guestbook.tsx            # Ziyaretçi defteri
-│   ├── VoiceRecorder.tsx        # İmza sesi kaydı
+│   ├── VoiceRecorder.tsx        # Kısa ses kaydı (imza sesi, kulaktan kulağa)
 │   ├── AwardPlaque.tsx          # Hologramlı plaket
 │   └── room/
 │       ├── useRoom.ts           # Oda durumu + Supabase Realtime
 │       ├── ModePicker.tsx       # Oyun modu ve ekler
 │       ├── Writer.tsx           # Senarist: yazım aşaması
 │       ├── DuelArena.tsx        # Düello turnuvası
-│       ├── ChainFinale.tsx      # Kulaktan kulağa finali
+│       ├── ChainFinale.tsx      # Taklit zinciri finali
+│       ├── PhoneGame.tsx        # Kulaktan kulağa: oku → tekrarla → yaz
+│       ├── PhoneFinale.tsx      # Kulaktan kulağa finali
 │       ├── Lobby.tsx
 │       ├── Recorder.tsx         # Replik bazlı kayıt ve önizleme
 │       └── Finale.tsx           # Senkron final ve jenerik

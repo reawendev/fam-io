@@ -36,13 +36,14 @@ export type SceneFull = Scene & { scene_roles: SceneRole[]; scene_lines: SceneLi
 export const SCENE_FULL_SELECT = "*, scene_roles(*), scene_lines(*), creator:profiles(username, display_name, color, avatar_path)";
 
 export type RoomStatus = "lobby" | "writing" | "recording" | "finale";
-export type GameMode = "klasik" | "zincir" | "senarist" | "duello";
+export type GameMode = "klasik" | "zincir" | "senarist" | "duello" | "kulak";
 export type GameMod = "kart" | "hain" | "foley";
 
 export type Room = {
   id: string;
   code: string;
-  scene_id: string;
+  /** Kulaktan kulağa odaları sahnesiz olabilir */
+  scene_id: string | null;
   host_id: string;
   status: RoomStatus;
   finale_at: string | null;
@@ -51,7 +52,7 @@ export type Room = {
   banned?: string[];
   mode?: GameMode;
   mods?: GameMod[];
-  mode_state?: { order?: string[]; players?: string[]; champion?: string };
+  mode_state?: { order?: string[]; players?: string[]; champion?: string; round?: number; game?: string | null };
   foley_user?: string | null;
   created_at: string;
 };
