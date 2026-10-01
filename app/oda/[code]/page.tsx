@@ -16,6 +16,10 @@ import DuelArena from "@/components/room/DuelArena";
 import ChainFinale from "@/components/room/ChainFinale";
 import PhoneGame from "@/components/room/PhoneGame";
 import PhoneFinale from "@/components/room/PhoneFinale";
+import PartyGame from "@/components/room/PartyGame";
+import StoryGame from "@/components/room/StoryGame";
+import PartyFinale from "@/components/room/PartyFinale";
+import { needsScene } from "@/lib/modes";
 import { modeName } from "@/lib/modes";
 
 function phasesFor(mode?: GameMode): { id: RoomStatus; label: string }[] {
@@ -26,7 +30,13 @@ function phasesFor(mode?: GameMode): { id: RoomStatus; label: string }[] {
       { id: "recording", label: "Kayıt" },
       { id: "finale", label: "Final" },
     ];
-  if (mode === "kulak")
+  if (mode === "hikaye")
+    return [
+      { id: "lobby", label: "Lobi" },
+      { id: "recording", label: "Hikâye" },
+      { id: "finale", label: "Final" },
+    ];
+  if (mode === "kulak" || mode === "kim" || mode === "efekt" || mode === "duygu")
     return [
       { id: "lobby", label: "Lobi" },
       { id: "recording", label: "Turlar" },
@@ -95,7 +105,7 @@ export default function OdaPage() {
         </div>
       </Center>
     );
-  if (!r.room || !r.me || (!r.scene && r.room.mode !== "kulak"))
+  if (!r.room || !r.me || (!r.scene && needsScene(r.room.mode)))
     return (
       <Center>
         <Spinner />
@@ -105,7 +115,9 @@ export default function OdaPage() {
   const room = r.room;
   const isHost = room.host_id === r.me;
   const kulak = room.mode === "kulak";
-  const title = kulak ? "Kulaktan kulağa" : (r.scene?.title ?? "");
+  const party = room.mode === "kim" || room.mode === "efekt" || room.mode === "duygu" || room.mode === "hikaye";
+  const sceneless = !needsScene(room.mode);
+  const title = sceneless ? (modeName(room.mode)) : (r.scene?.title ?? "");
 
   if (banned && !inRoom) {
     return (
@@ -157,7 +169,7 @@ export default function OdaPage() {
 
   return (
     <>
-      <RoomBar code={room.code} title={kulak ? "" : title} status={room.status} locked={!!room.locked} mode={room.mode} />
+      <RoomBar code={room.code} title={sceneless ? "" : title} status={room.status} locked={!!room.locked} mode={room.mode} />
       {r.error && (
         <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
           <Notice>{r.error}</Notice>
@@ -176,6 +188,18 @@ export default function OdaPage() {
           </Center>
         ))}
       {kulak && room.status === "finale" && <PhoneFinale {...base} />}
+      {party && room.status === "recording" &&
+        (inRoom ? (
+          room.mode === "hikaye" ? <StoryGame {...base} /> : <PartyGame {...base} />
+        ) : (
+          <Center>
+            <div className="max-w-sm text-center">
+              <p className="font-medium">Bu odada oyun başladı</p>
+              <p className="mt-1 text-sm text-muted">Final başlayınca sonuçları bu sayfadan görebilirsin.</p>
+            </div>
+          </Center>
+        ))}
+      {party && room.status === "finale" && <PartyFinale {...base} />}
       {room.status === "writing" &&
         (inRoom ? (
           <Writer {...common} />
@@ -188,7 +212,7 @@ export default function OdaPage() {
           </Center>
         ))}
       {room.status === "recording" && room.mode === "duello" && <DuelArena {...common} />}
-      {room.status === "recording" && room.mode !== "duello" && !kulak &&
+      {room.status === "recording" && room.mode !== "duello" && !sceneless &&
         (inRoom ? (
           <Recorder {...common} />
         ) : (
@@ -199,7 +223,7 @@ export default function OdaPage() {
             </div>
           </Center>
         ))}
-      {room.status === "finale" && !kulak &&
+      {room.status === "finale" && !sceneless &&
         (room.mode === "duello" ? <DuelArena {...common} /> : room.mode === "zincir" ? <ChainFinale {...common} /> : <Finale {...common} />)}
     </>
   );

@@ -34,7 +34,7 @@ Ekran görüntüleri: docs/ klasörüne koyup aşağıdaki satırların yorumunu
 
 | | |
 |---|---|
-| 🎲 **Oyun modları** | **Oyna** sayfasından modu seçip sahne seçmeden oda kur. **Klasik**, **Kulaktan kulağa** (sahnesiz: cümle ağızdan ağıza dolaşır), **Taklit zinciri** (orijinali sadece ilk kişi duyar, herkes bir öncekini taklit eder), **Senarist** (önce replikleri yeniden yaz, sonra seslendir) ve **Düello** (aynı replikte eleme usulü turnuva). |
+| 🎲 **Oyun modları** | **Oyna** sayfasından modu seçip sahne seçmeden oda kur. **Klasik**, **Kulaktan kulağa**, **Kim konuştu?**, **Efekt yarışması**, **Duygu ruleti**, **Sesli hikâye** (hepsi sahnesiz), **Taklit zinciri** (orijinali sadece ilk kişi duyar, herkes bir öncekini taklit eder), **Senarist** (önce replikleri yeniden yaz, sonra seslendir) ve **Düello** (aynı replikte eleme usulü turnuva). |
 | 🃏 **Ekler** | **Zorluk kartları** (fısıldayarak, spiker gibi, ağlayarak…), **Hain** (gizli görevli oyuncuyu bul) ve **Foley ustası** (biri konuşmaz, sahnenin efektlerini yapar). |
 | 👤 **Profiller** | Kullanıcı adı + şifre ile profil, profil fotoğrafı, kapak görseli, 5 saniyelik imza sesi ve ziyaretçi defteri. Dublajların, level'in, serin ve en uyumlu partnerlerin profilinde. |
 | 🛍️ **XP mağazası** | Kazandığın XP ile çerçeve, isim efekti, plaket, giriş sesi ve profil kapağı al. Harcamak level'i düşürmez. |
@@ -166,6 +166,10 @@ Oda iki yoldan kurulur: **Oyna** sayfasından (`/oyna`) önce modu seçersin, sa
 |---|---|
 | **Klasik** | Herkes kendi karakterini seçer ve repliklerini kaydeder; final hep birlikte izlenir. |
 | **Kulaktan kulağa** (sahnesiz) | Sahne yok. Herkese gizli, komik bir cümle düşer (40 hazır cümle, "Başka cümle" ya da "Kendim yazayım"); sesli okur. Sonraki turda herkes başka birinin kaydını duyar (metni görmeden, en fazla 2 kez dinleyip) ve tekrarlar; son turda duyduğunu yazar. Herkesin cümlesi aynı anda dolaşır, kimse sıra beklemez. Finalde her zincir baştan çalınır, ilk cümle ile son tahmin açılır; sonuçlar `/k/…` linkiyle paylaşılır. Oyuncu takılırsa oda sahibi "Bekleyenleri atla" der. Kayıt gönderen herkes +10 XP. |
+| **Kim konuştu?** (sahnesiz) | Herkes aynı cümleyi sesini değiştirerek okur. Kayıtlar isimsiz çalınır (dosya yolu bile rastgele), herkes hangisinin kime ait olduğunu tahmin eder. Doğru tahmin +1, seni tanıyamayan her kişi +1 puan. 3 tur. |
+| **Efekt yarışması** (sahnesiz) | Ekrana bir efekt çıkar (kapı gıcırtısı, dinozor kükremesi…). Herkes ağzıyla yapar, isimsiz kayıtlar oylanır; her oy +1 puan. 3 tur. |
+| **Duygu ruleti** (sahnesiz) | Aynı cümle, herkese gizli farklı bir duygu. Diğerleri duyguyu tahmin eder; doğru tahminde ikisine de +1 puan. 3 tur. |
+| **Sesli hikâye** (sahnesiz) | Açılış cümlesinden sonra sırası gelen sadece bir önceki parçayı dinleyip bir cümle ekler. Finalde hikâye baştan sona çalınır. |
 | **Taklit zinciri** | Sıra rastgele belirlenir. İlk kişi orijinali dinleyip tüm sahneyi seslendirir. Sonraki kişi orijinali değil, sadece bir öncekinin kaydını duyar (replik metni de gizli) ve onu taklit eder. Final zinciri halka halka çalar; tek bir repliğin nasıl değiştiği de karşılaştırılabilir. |
 | **Senarist** | Önce yazım aşaması: herkes, kendi seslendirmediği karakterlerin repliklerini parodi olarak yeniden yazar. Oda sahibi kayda geçirince yeni metinler seslendirilir. |
 | **Düello** | Oyuncular eşleşir; ikisi aynı repliği seslendirir, rakibin kaydı oylama açılana kadar gizli kalır. Diğerleri oylar, oda sahibi oylamayı kapatır, kazanan sonraki tura geçer. |
@@ -191,6 +195,10 @@ Oda iki yoldan kurulur: **Oyna** sayfasından (`/oyna`) önce modu seçersin, sa
 | **Düello:** kazandığın her maç / şampiyonluk | +10 / +50 |
 | **Hain:** yakalanmadan kaçtın | +40 |
 | **Hain:** haini doğru tahmin ettin | +15 |
+| **Kulaktan kulağa:** kayıt/tahmin gönderdin | +10 |
+| **Parti oyunları:** katılım + puan başına | +5 + 5 × puan (en çok 60); birinci +15 |
+| **Sesli hikâye:** anlattığın her parça | +5 (en çok 30) |
+| **İstek:** bir sahne isteğini karşıladın | +20 + oy başına 2 (en çok 20 oy); isteyen +5 |
 
 - **Level:** 1→2 için 100 XP, sonraki her level 50 XP daha fazla ister.
 - **Seri:** En az bir replik kaydettiğin bir sahne finale ulaşınca o gün sayılır (İstanbul saati). Bir gün atlarsan sıfırlanır.
@@ -313,6 +321,8 @@ fam-io/
 │   ├── api/discord/             # Discord slash komutları
 │   ├── oyna/                    # Oyun kur: mod seç, oda hemen açılsın
 │   ├── k/[id]/                  # Kulaktan kulağa sonuçlarının paylaşım sayfası
+│   ├── p/[id]/                  # Parti oyunu / sesli hikâye paylaşım sayfası
+│   ├── istekler/                # Sahne istek panosu
 │   ├── oda/[code]/page.tsx      # Oda: lobi → kayıt → final
 │   ├── giris/ + api/giris/      # Opsiyonel site şifresi
 │   └── globals.css
@@ -330,6 +340,9 @@ fam-io/
 │   ├── landing/DubbingMachine3D.tsx  # Ana sayfadaki 3D makine
 │   ├── ChainView.tsx            # Taklit zinciri sonuç görünümü
 │   ├── PhoneChains.tsx          # Kulaktan kulağa zincir kartları (final + paylaşım)
+│   ├── PartyResults.tsx         # Parti sonuçları ve hikâye oynatıcı (final + paylaşım)
+│   ├── Soundboard.tsx           # Lobi efekt düğmeleri (Realtime broadcast)
+│   ├── Showcase.tsx             # Profil vitrini ve oyun kartları
 │   ├── Guestbook.tsx            # Ziyaretçi defteri
 │   ├── VoiceRecorder.tsx        # Kısa ses kaydı (imza sesi, kulaktan kulağa)
 │   ├── AwardPlaque.tsx          # Hologramlı plaket
@@ -341,6 +354,9 @@ fam-io/
 │       ├── ChainFinale.tsx      # Taklit zinciri finali
 │       ├── PhoneGame.tsx        # Kulaktan kulağa: oku → tekrarla → yaz
 │       ├── PhoneFinale.tsx      # Kulaktan kulağa finali
+│       ├── PartyGame.tsx        # Kim konuştu? / Efekt yarışması / Duygu ruleti
+│       ├── StoryGame.tsx        # Sesli hikâye
+│       ├── PartyFinale.tsx      # Parti ve hikâye finali
 │       ├── Lobby.tsx
 │       ├── Recorder.tsx         # Replik bazlı kayıt ve önizleme
 │       └── Finale.tsx           # Senkron final ve jenerik

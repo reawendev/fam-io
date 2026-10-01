@@ -4,7 +4,7 @@ import { ArrowRight, Clapperboard, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MODE_ICON } from "@/components/room/ModePicker";
-import { btn, Button, ButtonLink, cx, Notice, PageHeader } from "@/components/ui";
+import { Button, ButtonLink, cx, Notice, PageHeader } from "@/components/ui";
 import { useMe } from "@/lib/auth";
 import { MODES } from "@/lib/modes";
 import { ensureUser, errMsg, sb } from "@/lib/supabase";
@@ -45,8 +45,6 @@ export default function Oyna() {
     router.push(`/oda/${c}`);
   }
 
-  const featured = MODES.find((m) => m.id === "kulak")!;
-  const rest = MODES.filter((m) => m.id !== "kulak");
 
   return (
     <main className="mx-auto max-w-5xl px-4 pb-20 sm:px-6">
@@ -71,67 +69,59 @@ export default function Oyna() {
         </div>
       )}
 
-      <button
-        onClick={() => create(featured.id)}
-        disabled={!!busy || me.status !== "in"}
-        className="panel group relative mb-4 flex w-full flex-col gap-4 overflow-hidden p-5 text-left transition-colors hover:border-accent/50 disabled:cursor-default disabled:hover:border-line sm:flex-row sm:items-center sm:p-6"
-      >
-        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_left,rgba(255,122,26,0.12),transparent_60%)]" />
-        <span className="relative flex size-14 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent [&_svg]:size-7">{MODE_ICON[featured.id]}</span>
-        <span className="relative min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="text-lg font-semibold tracking-tight">{featured.name}</span>
-            <span className="rounded bg-ok/10 px-1.5 py-0.5 text-[11px] text-ok">sahnesiz</span>
-            <span className="inline-flex items-center gap-1 text-xs text-muted">
-              <Users className="size-3.5" /> {featured.min}+ kişi
-            </span>
-          </span>
-          <span className="mt-1.5 block text-sm leading-relaxed text-fg-2">{featured.desc}</span>
-        </span>
-        <span className="relative">
-          <span className={btn("primary", "md")}>
-            {busy === featured.id ? "Açılıyor…" : "Oda kur"} <ArrowRight className="size-4" />
-          </span>
-        </span>
-      </button>
+      {[
+        { title: "Sahnesiz oyunlar", sub: "Video yok, sadece sesiniz. Hemen başlar.", list: MODES.filter((m) => !m.scene) },
+        { title: "Sahneli oyunlar", sub: "Kütüphaneden rastgele bir sahne gelir; lobide değiştirebilirsin.", list: MODES.filter((m) => m.scene) },
+      ].map((g) => (
+        <section key={g.title} className="mb-8">
+          <div className="mb-3">
+            <h2 className="text-sm font-medium">{g.title}</h2>
+            <p className="text-xs text-muted">{g.sub}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {g.list.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => create(m.id)}
+                disabled={!!busy || me.status !== "in"}
+                className={cx(
+                  "panel group flex flex-col gap-3 p-4 text-left transition-colors hover:border-line-strong disabled:cursor-default disabled:hover:border-line",
+                  busy === m.id && "border-accent/50",
+                )}
+              >
+                <span className="flex items-center gap-3">
+                  <span
+                    className={cx(
+                      "flex size-10 shrink-0 items-center justify-center rounded-lg [&_svg]:size-5",
+                      m.scene ? "bg-surface-2 text-fg-2" : "bg-accent/12 text-accent",
+                    )}
+                  >
+                    {MODE_ICON[m.id]}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium">{m.name}</span>
+                    <span className="block text-xs text-muted">{m.short}</span>
+                  </span>
+                  {busy === m.id ? <span className="text-xs text-accent">Açılıyor…</span> : <ArrowRight className="size-4 text-muted transition-transform group-hover:translate-x-0.5" />}
+                </span>
+                <span className="text-[13px] leading-relaxed text-fg-2">{m.desc.replace("Aşağıdaki eklerle", "Lobide eklerle")}</span>
+                <span className="mt-auto flex flex-wrap items-center gap-3 text-[11px] text-muted">
+                  <span className="inline-flex items-center gap-1">
+                    <Users className="size-3.5" /> {m.min}+ kişi
+                  </span>
+                  {m.scene && (
+                    <span className="inline-flex items-center gap-1">
+                      <Clapperboard className="size-3.5" /> Sahne rastgele gelir
+                    </span>
+                  )}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {rest.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => create(m.id)}
-            disabled={!!busy || me.status !== "in"}
-            className={cx(
-              "panel flex flex-col gap-3 p-5 text-left transition-colors hover:border-line-strong disabled:cursor-default disabled:hover:border-line",
-              busy === m.id && "border-accent/50",
-            )}
-          >
-            <span className="flex items-center gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg-2 [&_svg]:size-5">{MODE_ICON[m.id]}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium">{m.name}</span>
-                <span className="block text-xs text-muted">{m.short}</span>
-              </span>
-              {busy === m.id ? (
-                <span className="text-xs text-accent">Açılıyor…</span>
-              ) : (
-                <ArrowRight className="size-4 text-muted" />
-              )}
-            </span>
-            <span className="text-[13px] leading-relaxed text-fg-2">{m.desc.replace("Aşağıdaki eklerle", "Lobide eklerle")}</span>
-            <span className="mt-auto flex flex-wrap items-center gap-3 text-[11px] text-muted">
-              <span className="inline-flex items-center gap-1">
-                <Users className="size-3.5" /> {m.min}+ kişi
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <Clapperboard className="size-3.5" /> Sahne rastgele gelir
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
         <form onSubmit={join} className="panel flex flex-col gap-3 p-4">
           <h2 className="text-sm font-medium">Arkadaşın oda mı kurdu?</h2>
           <div className="flex gap-2">

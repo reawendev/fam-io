@@ -1,12 +1,14 @@
 "use client";
 
-import { Bell, BellOff, Crown, Dices, Ear, Link2, Lock, LockOpen, LogOut, Mic, MicOff, Shuffle, Swords, UserX, Volume2 } from "lucide-react";
+import { Bell, BellOff, Crown, Dices, Link2, Lock, LockOpen, LogOut, Mic, MicOff, Shuffle, Swords, UserX, Volume2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, Button, cx, IconButton, Notice, RoleTag, Swatch, UserName } from "@/components/ui";
 import ModePicker from "./ModePicker";
 import { playEntrance } from "@/lib/shop";
-import { MODES } from "@/lib/modes";
+import { MODES, needsScene } from "@/lib/modes";
+import { MODE_ICON } from "./ModePicker";
+import Soundboard from "@/components/Soundboard";
 import type { GameMod, GameMode } from "@/lib/types";
 import MicWave from "@/components/MicWave";
 import { CreatorTag } from "@/components/SceneBits";
@@ -51,7 +53,7 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
   const mode: GameMode = room.mode ?? "klasik";
   const mods: GameMod[] = room.mods ?? [];
   const rolesMode = mode === "klasik" || mode === "senarist";
-  const kulak = mode === "kulak";
+  const sceneless = !needsScene(mode);
   const minPlayers = MODES.find((m) => m.id === mode)?.min ?? 1;
   // Başlarken karakter alacak kişi sayısı (tahmini): foley yapan hariç, karakter sayısı kadar
   const actors = Math.min(players.length - (room.foley_user && players.length > 1 ? 1 : 0), roles.length);
@@ -122,8 +124,8 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
   return (
     <main className="mx-auto grid max-w-6xl gap-5 px-4 py-6 pb-20 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <section className="flex min-w-0 flex-col gap-4 lg:row-span-2">
-        {kulak ? (
-          <KulakIntro players={players.length} />
+        {sceneless ? (
+          <SceneFreeIntro mode={mode} players={players.length} />
         ) : scene ? (
         <div className="panel overflow-hidden">
           <video
@@ -189,13 +191,13 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
         {!rolesMode ? (
           <div className="panel flex items-start gap-3 p-4">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
-              {kulak ? <Ear className="size-4" /> : mode === "zincir" ? <Link2 className="size-4" /> : <Swords className="size-4" />}
+              {sceneless ? MODE_ICON[mode] : mode === "zincir" ? <Link2 className="size-4" /> : <Swords className="size-4" />}
             </span>
             <div className="text-sm">
-              <p className="font-medium">{kulak ? `${players.length} cümle, ${players.length} tur` : mode === "zincir" ? "Herkes tüm sahneyi seslendirir" : "Karakter seçimi yok"}</p>
+              <p className="font-medium">{sceneless ? SCENELESS_INFO[mode]?.title(players.length) : mode === "zincir" ? "Herkes tüm sahneyi seslendirir" : "Karakter seçimi yok"}</p>
               <p className="mt-1 text-xs leading-relaxed text-muted">
-                {kulak
-                  ? "Başlarken sıra rastgele belirlenir. Her turda herkes aynı anda oynar; bir tur, herkes kaydını gönderince biter. Oyun sırasında odaya kimse katılamaz."
+                {sceneless
+                  ? SCENELESS_INFO[mode]?.note
                   : mode === "zincir"
                   ? `Başlarken sıra rastgele belirlenir. Sahnede ${roles.length} karakter, ${lineCount} replik var; kısa sahneler bu modda daha eğlenceli.`
                   : "Başlarken oyuncular rastgele eşleşir. Her maçta ikiniz aynı repliği seslendirirsiniz, diğerleri oylar. Tek kalan bir tur bay geçer."}
@@ -344,6 +346,8 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
           </ul>
         </div>
 
+        <Soundboard roomId={room.id} me={me} players={players} />
+
         <div className="panel flex flex-col gap-3 p-4">
           <Button
             size="sm"
@@ -367,10 +371,10 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
                 variant="primary"
                 size="lg"
                 loading={busy === "start_game"}
-                disabled={!!busy || players.length < minPlayers || (!kulak && lineCount === 0)}
+                disabled={!!busy || players.length < minPlayers || (!sceneless && lineCount === 0)}
                 onClick={() => rpc("start_game", { p_room: room.id })}
               >
-                {kulak ? "Oyunu başlat" : mode === "duello" ? "Turnuvayı başlat" : mode === "zincir" ? "Zinciri başlat" : mode === "senarist" ? "Yazıma başla" : "Kayda başla"}
+                {sceneless ? "Oyunu başlat" : mode === "duello" ? "Turnuvayı başlat" : mode === "zincir" ? "Zinciri başlat" : mode === "senarist" ? "Yazıma başla" : "Kayda başla"}
               </Button>
               {players.length < minPlayers && <p className="text-xs text-amber-200">Bu mod için en az {minPlayers} oyuncu gerekir.</p>}
               {mods.includes("hain") && actors < 3 && rolesMode && (
@@ -418,13 +422,63 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
   );
 }
 
-/** Kulaktan kulağa lobisi: sahne yerine nasıl oynandığı */
-function KulakIntro({ players }: { players: number }) {
-  const steps = [
-    { t: "Oku", d: "Herkese gizli, komik bir cümle düşer (istersen kendin yazarsın). Sesli okursun." },
-    { t: "Dinle ve tekrarla", d: "Sonraki turda başkasının kaydını duyarsın; metni görmeden, duyduğun gibi tekrarlarsın." },
-    { t: "Tahmin et", d: "Son kişi duyduğunu yazar. Finalde baştaki cümleyle karşılaştırılır." },
-  ];
+const SCENELESS_INFO: Record<string, { title: (n: number) => string; note: string; lead: string; steps: { t: string; d: string }[] }> = {
+  kulak: {
+    title: (n) => `${n} cümle, ${n} tur`,
+    note: "Başlarken sıra rastgele belirlenir. Her turda herkes aynı anda oynar; bir tur, herkes kaydını gönderince biter. Oyun sırasında odaya kimse katılamaz.",
+    lead: "Sahne yok. Bir cümle ağızdan ağıza dolaşır, sonunda bambaşka bir şeye dönüşür.",
+    steps: [
+      { t: "Oku", d: "Herkese gizli, komik bir cümle düşer (istersen kendin yazarsın). Sesli okursun." },
+      { t: "Dinle ve tekrarla", d: "Sonraki turda başkasının kaydını duyarsın; metni görmeden, duyduğun gibi tekrarlarsın." },
+      { t: "Tahmin et", d: "Son kişi duyduğunu yazar. Finalde baştaki cümleyle karşılaştırılır." },
+    ],
+  },
+  kim: {
+    title: () => "3 tur, herkes aynı anda",
+    note: "Kayıtlar isimsiz yüklenir; dosyalardan bile kimin olduğu anlaşılmaz. Doğru tahmin +1, seni tanıyamayan her kişi için +1 puan.",
+    lead: "Herkes aynı cümleyi okur ama kimse kendi sesiyle konuşmaz.",
+    steps: [
+      { t: "Sesini değiştir", d: "Ekrandaki cümleyi kalın, ince, aksanlı… tanınmayacak bir sesle oku." },
+      { t: "Kimin sesi?", d: "Kayıtlar karışık çalınır. Her birinin kime ait olduğunu tahmin et." },
+      { t: "Açıklama", d: "Kim kimi kandırdı? Puanlar eklenir, 3 turun sonunda birinci +15 XP alır." },
+    ],
+  },
+  efekt: {
+    title: () => "3 efekt, 3 oylama",
+    note: "Her turda yeni bir efekt. Kayıtlar isimsiz oylanır; aldığın her oy +1 puan. Kendine oy veremezsin.",
+    lead: "Foley stüdyosu sizsiniz: ağzınızla, eşyalarla, ne bulursanız.",
+    steps: [
+      { t: "Efekti yap", d: "Ekranda bir efekt çıkar: kapı gıcırtısı, dinozor kükremesi… En fazla 6 saniye." },
+      { t: "Oyla", d: "Herkesin kaydı isimsiz çalınır. En iyisine oy ver." },
+      { t: "Kazanan", d: "Kimin hangi sesi yaptığı açıklanır. 3 turun sonunda birinci +15 XP alır." },
+    ],
+  },
+  duygu: {
+    title: () => "3 tur, gizli duygular",
+    note: "Herkesin duygusu farklıdır ve sadece kendisi görür. Doğru tahmin edilen kayıtta hem tahmin eden hem okuyan +1 puan.",
+    lead: "Aynı cümle, bambaşka duygular.",
+    steps: [
+      { t: "Duygunu çek", d: "Sana gizli bir duygu düşer: aşık, şüpheli, uykulu… Cümleyi o duyguyla oku." },
+      { t: "Tahmin et", d: "Diğerlerinin kayıtlarını dinle, hangi duyguyla okuduklarını seç." },
+      { t: "Açıklama", d: "Duygular açılır. İyi oynayan da iyi tahmin eden de kazanır." },
+    ],
+  },
+  hikaye: {
+    title: (n) => `${n} kişi, sırayla`,
+    note: "Sıra rastgele belirlenir; herkes en az bir kez anlatır. Sırası gelmeyenler bekler, final herkesle birlikte dinlenir.",
+    lead: "Bir açılış cümlesi, sonra her şey sizin elinizde.",
+    steps: [
+      { t: "Açılış", d: "İlk kişi ekrandaki açılış cümlesinden devam eder ve bir cümle kaydeder." },
+      { t: "Sadece öncekini duy", d: "Sıradaki kişi yalnızca bir önceki parçayı dinler ve hikâyeye bir cümle ekler." },
+      { t: "Baştan sona", d: "Finalde bütün hikâye arka arkaya çalınır; paylaşılabilir." },
+    ],
+  },
+};
+
+/** Sahnesiz modların lobisi: sahne yerine nasıl oynandığı */
+function SceneFreeIntro({ mode, players }: { mode: GameMode; players: number }) {
+  const info = SCENELESS_INFO[mode] ?? SCENELESS_INFO.kulak;
+  const name = MODES.find((m) => m.id === mode)?.name ?? "";
   return (
     <div className="panel overflow-hidden">
       <div className="relative flex aspect-[21/9] items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_center,rgba(255,122,26,0.16),transparent_70%)]">
@@ -433,20 +487,20 @@ function KulakIntro({ players }: { players: number }) {
             <span key={i} className="flex items-center gap-2 sm:gap-3">
               {i > 0 && <span className="h-px w-5 bg-gradient-to-r from-accent/60 to-accent/10 sm:w-8" />}
               <span
-                className="flex size-10 items-center justify-center rounded-full border border-accent/40 bg-accent/10 text-accent sm:size-12"
+                className="flex size-10 items-center justify-center rounded-full border border-accent/40 bg-accent/10 text-accent sm:size-12 [&_svg]:size-5"
                 style={{ opacity: 1 - i * 0.12 }}
               >
-                <Ear className="size-5" />
+                {MODE_ICON[mode]}
               </span>
             </span>
           ))}
         </div>
       </div>
       <div className="p-4">
-        <h2 className="font-medium">Kulaktan kulağa</h2>
-        <p className="mt-1 text-sm text-muted">Sahne yok. Bir cümle ağızdan ağıza dolaşır, sonunda bambaşka bir şeye dönüşür.</p>
+        <h2 className="font-medium">{name}</h2>
+        <p className="mt-1 text-sm text-muted">{info.lead}</p>
         <ol className="mt-4 grid gap-3 sm:grid-cols-3">
-          {steps.map((s, i) => (
+          {info.steps.map((s, i) => (
             <li key={s.t} className="rounded-lg border border-line bg-bg p-3">
               <span className="font-mono text-[11px] text-accent">{i + 1}</span>
               <p className="mt-1 text-sm font-medium">{s.t}</p>

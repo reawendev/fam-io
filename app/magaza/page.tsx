@@ -7,10 +7,10 @@ import AwardPlaque from "@/components/AwardPlaque";
 import { Avatar, Button, ButtonLink, cx, EmptyState, Notice, PageHeader, Skeleton, UserName } from "@/components/ui";
 import { refreshMe, useMe } from "@/lib/auth";
 import { levelInfo } from "@/lib/progress";
-import { balance, bannerClass, KIND_LABEL, PLAQUES, playJingle, type ShopItem, type ShopKind } from "@/lib/shop";
+import { balance, bannerClass, BOARD_INFO, KIND_LABEL, PLAQUES, playBoard, playJingle, type ShopItem, type ShopKind } from "@/lib/shop";
 import { errMsg, sb } from "@/lib/supabase";
 
-const KINDS: ShopKind[] = ["frame", "name", "banner", "plaque", "sound"];
+const KINDS: ShopKind[] = ["frame", "name", "banner", "plaque", "sound", "board"];
 
 export default function Magaza() {
   const me = useMe();
@@ -34,6 +34,10 @@ export default function Magaza() {
   useEffect(() => {
     load();
   }, [load]);
+  useEffect(() => {
+    const t = new URLSearchParams(location.search).get("tur") as ShopKind | null;
+    if (t && KINDS.includes(t)) setKind(t);
+  }, []);
 
   const profile = me.status === "in" ? me.profile : null;
   const bal = profile ? balance(profile) : 0;
@@ -50,7 +54,7 @@ export default function Magaza() {
       setBusy(null);
       return;
     }
-    await sb().rpc("equip_item", { p_kind: it.kind, p_item: it.id });
+    if (it.kind !== "board") await sb().rpc("equip_item", { p_kind: it.kind, p_item: it.id });
     await Promise.all([load(), refreshMe()]);
     setFlash(it.id);
     setTimeout(() => setFlash(null), 1600);
@@ -125,7 +129,7 @@ export default function Magaza() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((it) => {
             const has = it.price === 0 || owned.has(it.id);
-            const on = equipped[it.kind] === it.id;
+            const on = it.kind !== "board" && equipped[it.kind] === it.id;
             const afford = bal >= it.price;
             return (
               <article key={it.id} className={cx("panel flex flex-col overflow-hidden transition-colors", on ? "border-accent/50" : "hover:border-line-strong", flash === it.id && "pop-in")}>
@@ -142,7 +146,9 @@ export default function Magaza() {
                     <p className="truncate text-sm font-medium">{it.name}</p>
                     <p className="font-mono text-xs text-muted">{it.price === 0 ? "ücretsiz" : has ? "sende var" : `${it.price} XP`}</p>
                   </div>
-                  {!profile ? null : has ? (
+                  {!profile ? null : has && it.kind === "board" ? (
+                    <span className="text-xs text-ok">Lobide hazır</span>
+                  ) : has ? (
                     <Button size="sm" variant={on ? "ghost" : "secondary"} loading={busy === it.id} disabled={!!busy} onClick={() => equip(it, !on)}>
                       {on ? "Çıkar" : "Tak"}
                     </Button>
@@ -171,7 +177,7 @@ export default function Magaza() {
           <Link href={`/u/${profile.username}`} className="text-fg-2 hover:underline">
             profilinde
           </Link>
-          , lobide ve liderlik tablosunda görünür. Giriş sesi, odaya katıldığında diğerlerine çalar (imza sesin varsa o çalar).
+          , lobide ve liderlik tablosunda görünür. Giriş sesi, odaya katıldığında diğerlerine çalar (imza sesin varsa o çalar). Efekt düğmeleri lobide herkese çalar.
         </p>
       )}
     </main>
@@ -186,6 +192,17 @@ function Preview({ it, name, color, avatar }: { it: ShopItem; name: string; colo
     const p = PLAQUES[it.id];
     return p ? <AwardPlaque eyebrow="FAM-IO · PLAKET" title={p.title} tone={p.tone} className="w-[220px]" /> : null;
   }
+  if (it.kind === "board")
+    return (
+      <button
+        onClick={() => playBoard(it.id)}
+        className="flex size-20 flex-col items-center justify-center gap-1 rounded-2xl border border-line-strong bg-surface-2 shadow-lg shadow-black/40 transition-transform hover:scale-105 active:scale-95"
+        aria-label={`${it.name} dinle`}
+      >
+        <span className="text-3xl leading-none">{BOARD_INFO[it.id]?.emoji ?? "🔊"}</span>
+        <span className="text-[10px] text-muted">dinle</span>
+      </button>
+    );
   return (
     <button
       onClick={() => playJingle(it.id)}

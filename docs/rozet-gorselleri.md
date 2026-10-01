@@ -128,6 +128,11 @@ Prompt yapısı: **Ortak stil + Seviye çerçevesi + Motif**
 
 | id | Ad | Seviye | Motif |
 |---|---|---|---|
+| `partici` | Partici | Bronz | `a party popper bursting confetti shaped like tiny sound waves` |
+| `parti_krali` | Parti Kralı | Altın | `a crown resting on top of a disco ball microphone` |
+| `hikaye_anlatici` | Hikâye Anlatıcı | Bronz | `an open storybook with a speech bubble rising from its pages` |
+| `istek_avcisi` | İstek Avcısı | Bronz | `an inbox tray with a film reel dropping into it` |
+| `dilek_perisi` | Dilek Perisi | Gümüş | `a magic wand with a film clapperboard star at its tip` |
 | `kulak_misafiri` | Kulak Misafiri | Bronz | `a single cupped ear with three small sound waves entering it` |
 | `fisildayan` | Fısıldayan | Gümüş | `two stylized profiles facing each other with a curly whisper line passing between their lips and ear` |
 | `zincir_halkasi` | Zincir Halkası | Bronz | `three chain links where the middle one is shaped like a speech bubble` |

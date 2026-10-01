@@ -19,6 +19,38 @@ export const MODES: { id: GameMode; name: string; short: string; desc: string; m
     scene: false,
   },
   {
+    id: "kim",
+    name: "Kim konuştu?",
+    short: "Sesini değiştir, kimse tanımasın",
+    desc: "Herkes aynı cümleyi sesini değiştirerek okur. Kayıtlar isimsiz ve karışık çalınır; hangisinin kime ait olduğunu tahmin edersin. Doğru tahmin sana, seni tanıyamayanlar sana puan. 3 tur.",
+    min: 3,
+    scene: false,
+  },
+  {
+    id: "efekt",
+    name: "Efekt yarışması",
+    short: "Ağzınla efekt yap, en iyisi kazansın",
+    desc: "Ekrana bir efekt çıkar: kapı gıcırtısı, uzay gemisi kalkışı, dinozor kükremesi… Herkes ağzıyla ya da eşyalarla yapar, kayıtlar isimsiz oylanır. 3 tur.",
+    min: 3,
+    scene: false,
+  },
+  {
+    id: "duygu",
+    name: "Duygu ruleti",
+    short: "Aynı cümle, gizli duygu",
+    desc: "Herkes aynı cümleyi kendisine gizlice düşen bir duyguyla okur (aşık, şüpheli, uykulu…). Diğerleri hangi duygu olduğunu tahmin eder; doğru bilinirse ikinize de puan. 3 tur.",
+    min: 2,
+    scene: false,
+  },
+  {
+    id: "hikaye",
+    name: "Sesli hikâye",
+    short: "Sırayla bir cümle ekle",
+    desc: "Bir açılış cümlesiyle başlar. Sırası gelen, sadece bir önceki parçayı dinleyip hikâyeye bir cümle ekler. Finalde bütün hikâye baştan sona çalınır.",
+    min: 2,
+    scene: false,
+  },
+  {
     id: "zincir",
     name: "Taklit zinciri",
     short: "Sahneyi sırayla taklit edin",
@@ -75,3 +107,25 @@ export const cardInfo = (id?: string | null) => (id ? CARDS[id] ?? { name: id, h
 
 /** Senarist modunda repliğin süresine göre önerilen en fazla karakter */
 export const suggestedChars = (sec: number) => Math.max(12, Math.round(sec * 16));
+
+export const needsScene = (m?: string | null) => !m || ["klasik", "zincir", "senarist", "duello"].includes(m);
+export const isParty = (m?: string | null) => m === "kim" || m === "efekt" || m === "duygu";
+/** Parti modlarında en uzun kayıt (sn) */
+export const PARTY_MAX_SEC: Record<string, number> = { kim: 8, efekt: 6, duygu: 8, hikaye: 12 };
+
+/** Duygu ruleti (kimlikler veritabanındaki _duygu_list() ile aynı) */
+export const EMOTIONS: Record<string, { name: string; emoji: string }> = {
+  mutlu: { name: "Mutlu", emoji: "😄" },
+  uzgun: { name: "Üzgün", emoji: "😢" },
+  kizgin: { name: "Kızgın", emoji: "😠" },
+  korkmus: { name: "Korkmuş", emoji: "😨" },
+  saskin: { name: "Şaşkın", emoji: "😲" },
+  utangac: { name: "Utangaç", emoji: "😳" },
+  heyecanli: { name: "Heyecanlı", emoji: "🤩" },
+  sikilmis: { name: "Sıkılmış", emoji: "😒" },
+  asik: { name: "Aşık", emoji: "😍" },
+  supheli: { name: "Şüpheli", emoji: "🤨" },
+  gururlu: { name: "Gururlu", emoji: "😌" },
+  uykulu: { name: "Uykulu", emoji: "🥱" },
+};
+export const emotion = (id?: string | null) => (id ? (EMOTIONS[id] ?? { name: id, emoji: "🎭" }) : null);

@@ -30,6 +30,10 @@ const commands = [
         choices: [
           { name: "Klasik", value: "klasik" },
           { name: "Kulaktan kulağa (sahnesiz)", value: "kulak" },
+          { name: "Kim konuştu? (sahnesiz)", value: "kim" },
+          { name: "Efekt yarışması (sahnesiz)", value: "efekt" },
+          { name: "Duygu ruleti (sahnesiz)", value: "duygu" },
+          { name: "Sesli hikâye (sahnesiz)", value: "hikaye" },
           { name: "Taklit zinciri", value: "zincir" },
           { name: "Senarist", value: "senarist" },
           { name: "Düello", value: "duello" },

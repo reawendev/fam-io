@@ -27,6 +27,25 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
   const router = useRouter();
   const isNew = !initial;
   const [sceneId] = useState(() => initial?.id ?? crypto.randomUUID());
+  // /sahneler/yeni?istek=<id>: kaydedince bu sahne isteği karşılar
+  const [istek, setIstek] = useState<{ id: string; title: string } | null>(null);
+  useEffect(() => {
+    if (!isNew) return;
+    const id = new URLSearchParams(location.search).get("istek");
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return;
+    sb()
+      .from("scene_requests")
+      .select("id, title, status")
+      .eq("id", id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const r = data as { id: string; title: string; status: string } | null;
+        if (r && r.status === "acik") {
+          setIstek({ id: r.id, title: r.title });
+          setTitle((t) => t || r.title);
+        }
+      });
+  }, [isNew]);
 
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -305,6 +324,11 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
         })),
       );
       if (e4) throw e4;
+      if (isNew && istek) {
+        const { error: e5 } = await sb().rpc("fulfill_scene_request", { p_id: istek.id, p_scene: sceneId });
+        router.push(e5 ? "/istekler" : "/istekler?karsilandi=1");
+        return;
+      }
       router.push("/sahneler");
     } catch (e) {
       setError("Kaydedilemedi: " + errMsg(e));
@@ -387,6 +411,13 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
         }
       />
 
+      {istek && (
+        <div className="mb-5">
+          <Notice tone="info">
+            Bu sahne <b className="text-fg">“{istek.title}”</b> isteğini karşılayacak. Kaydedince XP hesabına eklenir.
+          </Notice>
+        </div>
+      )}
       {error && (
         <div className="mb-5">
           <Notice>{error}</Notice>

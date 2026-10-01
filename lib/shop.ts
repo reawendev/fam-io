@@ -9,7 +9,7 @@ import type { PlaqueTone } from "@/components/AwardPlaque";
  * burada sadece görünüşleri var. Bakiye = toplam XP − harcanan; harcamak level'i düşürmez.
  */
 
-export type ShopKind = "frame" | "name" | "plaque" | "sound" | "banner";
+export type ShopKind = "frame" | "name" | "plaque" | "sound" | "banner" | "board";
 export type ShopItem = { id: string; kind: ShopKind; name: string; price: number; sort: number };
 
 export const KIND_LABEL: Record<ShopKind, string> = {
@@ -18,6 +18,7 @@ export const KIND_LABEL: Record<ShopKind, string> = {
   plaque: "Plaketler",
   sound: "Giriş sesleri",
   banner: "Profil kapakları",
+  board: "Efekt düğmeleri",
 };
 
 /** Avatar çerçevesi sınıfı (globals.css) */
@@ -118,4 +119,91 @@ export function playEntrance(p: { voice_path?: string | null; equipped?: Equippe
     return;
   }
   playJingle(p.equipped?.sound, volume);
+}
+
+// ------------------------------------------------------------
+// Lobi efekt düğmeleri: ücretsiz 3 ses + mağazadan alınanlar (dosya yok, Web Audio)
+// ------------------------------------------------------------
+export const FREE_BOARD = ["board_badum", "board_korna", "board_alkis"];
+export const BOARD_INFO: Record<string, { label: string; emoji: string }> = {
+  board_badum: { label: "Ba-dum-tss", emoji: "🥁" },
+  board_korna: { label: "Korna", emoji: "📯" },
+  board_alkis: { label: "Alkış", emoji: "👏" },
+  board_kriket: { label: "Cırcır", emoji: "🦗" },
+  board_boing: { label: "Boing", emoji: "🌀" },
+  board_trombon: { label: "Hüzün", emoji: "🎺" },
+  board_scratch: { label: "Cızırtı", emoji: "💿" },
+  board_alarm: { label: "Alarm", emoji: "🚨" },
+  board_gong: { label: "Gong", emoji: "🔔" },
+  board_zafer: { label: "Zafer", emoji: "🏆" },
+};
+
+export function playBoard(id: string, volume = 0.8) {
+  if (!BOARD_INFO[id]) return;
+  const ctx = audioCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const out = ctx.createGain();
+  out.gain.value = volume;
+  out.connect(ctx.destination);
+  const t = ctx.currentTime + 0.03;
+  switch (id) {
+    case "board_badum":
+      tone(ctx, out, 200, t, 0.16, "sine", 0.55, 110);
+      tone(ctx, out, 150, t + 0.17, 0.2, "sine", 0.55, 80);
+      tone(ctx, out, 90, t + 0.4, 0.25, "sine", 0.6, 45);
+      noise(ctx, out, t + 0.4, 1.1, 0.28, 5000);
+      break;
+    case "board_korna":
+      [0, 0.34].forEach((s, i) => {
+        tone(ctx, out, 349, t + s, i ? 0.45 : 0.26, "square", 0.09);
+        tone(ctx, out, 440, t + s, i ? 0.45 : 0.26, "sawtooth", 0.07);
+      });
+      break;
+    case "board_alkis":
+      for (let i = 0; i < 38; i++) noise(ctx, out, t + Math.random() * 1.6, 0.05 + Math.random() * 0.04, 0.12 + Math.random() * 0.12, 900 + Math.random() * 1200);
+      break;
+    case "board_kriket":
+      for (let g = 0; g < 3; g++) for (let i = 0; i < 4; i++) tone(ctx, out, 4600, t + g * 0.55 + i * 0.045, 0.03, "sine", 0.12);
+      break;
+    case "board_boing":
+      tone(ctx, out, 140, t, 0.22, "sine", 0.45, 620);
+      tone(ctx, out, 620, t + 0.2, 0.5, "triangle", 0.3, 160);
+      break;
+    case "board_trombon":
+      [
+        [392, 0, 0.32],
+        [370, 0.36, 0.32],
+        [349, 0.72, 0.32],
+        [330, 1.08, 1.0],
+      ].forEach(([f, s, d]) => tone(ctx, out, f, t + s, d, "sawtooth", 0.1, s > 1 ? f * 0.94 : undefined));
+      break;
+    case "board_scratch":
+      noise(ctx, out, t, 0.18, 0.45, 1800);
+      tone(ctx, out, 900, t, 0.18, "sawtooth", 0.05, 250);
+      noise(ctx, out, t + 0.22, 0.22, 0.4, 1400);
+      tone(ctx, out, 250, t + 0.22, 0.22, "sawtooth", 0.05, 1100);
+      break;
+    case "board_alarm":
+      for (let i = 0; i < 6; i++) tone(ctx, out, i % 2 ? 660 : 880, t + i * 0.16, 0.15, "square", 0.08);
+      break;
+    case "board_gong":
+      [110, 167, 233, 349].forEach((f, i) => tone(ctx, out, f, t, 2.6 - i * 0.4, "sine", 0.3 / (i + 1)));
+      noise(ctx, out, t, 0.25, 0.15, 2500);
+      break;
+    case "board_zafer":
+      [
+        [523.25, 0, 0.14],
+        [523.25, 0.16, 0.14],
+        [523.25, 0.32, 0.14],
+        [659.25, 0.48, 0.3],
+        [587.33, 0.8, 0.14],
+        [659.25, 0.96, 0.14],
+        [783.99, 1.12, 0.8],
+      ].forEach(([f, s, d]) => {
+        tone(ctx, out, f, t + s, d, "sawtooth", 0.09);
+        tone(ctx, out, f / 2, t + s, d, "square", 0.04);
+      });
+      break;
+  }
+  setTimeout(() => out.disconnect(), 3200);
 }

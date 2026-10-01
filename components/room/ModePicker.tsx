@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Drama, Ear, Link2, PenLine, Shuffle, Swords, Users, Volume2, VenetianMask } from "lucide-react";
+import { BookOpen, Check, Drama, Ear, Link2, ScanFace, PenLine, Shuffle, Smile, Swords, Users, Volume2, VenetianMask, Waves } from "lucide-react";
 import { MODES, MOD_INFO } from "@/lib/modes";
 import type { GameMod, GameMode, Room } from "@/lib/types";
 import { cx } from "@/components/ui";
@@ -11,6 +11,10 @@ export const MODE_ICON: Record<GameMode, React.ReactNode> = {
   zincir: <Link2 className="size-4" />,
   senarist: <PenLine className="size-4" />,
   duello: <Swords className="size-4" />,
+  kim: <ScanFace className="size-4" />,
+  efekt: <Waves className="size-4" />,
+  duygu: <Smile className="size-4" />,
+  hikaye: <BookOpen className="size-4" />,
 };
 const MOD_ICON: Record<GameMod, React.ReactNode> = {
   kart: <Shuffle className="size-3.5" />,
@@ -45,31 +49,40 @@ export default function ModePicker({
         </h3>
         {!isHost && <span className="text-xs text-muted">oda sahibi seçer</span>}
       </div>
-      <div className="grid grid-cols-2 gap-2 p-3" role="radiogroup" aria-label="Oyun modu">
-        {MODES.map((m) => {
-          const on = m.id === mode;
-          return (
-            <button
-              key={m.id}
-              role="radio"
-              aria-checked={on}
-              disabled={!isHost || busy}
-              onClick={() => onChange(m.id, m.id === "zincir" || m.id === "duello" || m.id === "kulak" ? [] : mods)}
-              className={cx(
-                "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors disabled:cursor-default",
-                on ? "border-accent/60 bg-accent/[0.08]" : "border-line bg-bg",
-                isHost && !on && "hover:border-line-strong",
-                !isHost && !on && "opacity-50",
-              )}
-            >
-              <span className={cx("flex items-center gap-1.5 text-sm font-medium", on && "text-accent")}>
-                {MODE_ICON[m.id]} {m.name}
-                {!m.scene && <span className="rounded bg-ok/10 px-1 py-px text-[10px] font-normal text-ok">sahnesiz</span>}
-              </span>
-              <span className="text-[11px] leading-snug text-muted">{m.short}</span>
-            </button>
-          );
-        })}
+      <div className="flex flex-col gap-3 p-3" role="radiogroup" aria-label="Oyun modu">
+        {[
+          { title: "Sahneli", list: MODES.filter((m) => m.scene) },
+          { title: "Sahnesiz", list: MODES.filter((m) => !m.scene) },
+        ].map((g) => (
+          <div key={g.title}>
+            <p className="eyebrow mb-1.5 px-1">{g.title}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {g.list.map((m) => {
+                const on = m.id === mode;
+                return (
+                  <button
+                    key={m.id}
+                    role="radio"
+                    aria-checked={on}
+                    disabled={!isHost || busy}
+                    onClick={() => onChange(m.id, m.id === "klasik" || m.id === "senarist" ? mods : [])}
+                    className={cx(
+                      "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors disabled:cursor-default",
+                      on ? "border-accent/60 bg-accent/[0.08]" : "border-line bg-bg",
+                      isHost && !on && "hover:border-line-strong",
+                      !isHost && !on && "opacity-50",
+                    )}
+                  >
+                    <span className={cx("flex items-center gap-1.5 text-sm font-medium", on && "text-accent")}>
+                      {MODE_ICON[m.id]} {m.name}
+                    </span>
+                    <span className="text-[11px] leading-snug text-muted">{m.short}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
       <p className="px-4 pb-3 text-xs leading-relaxed text-fg-2">
         {cur.desc}

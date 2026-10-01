@@ -15,7 +15,18 @@ const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const ORANGE = 0xff7a1a;
 const EPHEMERAL = 64;
 
-const MODE_NAMES: Record<string, string> = { klasik: "Klasik", kulak: "Kulaktan kulağa", zincir: "Taklit zinciri", senarist: "Senarist", duello: "Düello" };
+const MODE_NAMES: Record<string, string> = {
+  klasik: "Klasik",
+  kulak: "Kulaktan kulağa",
+  kim: "Kim konuştu?",
+  efekt: "Efekt yarışması",
+  duygu: "Duygu ruleti",
+  hikaye: "Sesli hikâye",
+  zincir: "Taklit zinciri",
+  senarist: "Senarist",
+  duello: "Düello",
+};
+const SCENELESS = ["kulak", "kim", "efekt", "duygu", "hikaye"];
 
 function hex(s: string) {
   const out = new Uint8Array(s.length / 2);
@@ -125,11 +136,11 @@ export async function POST(req: Request) {
       return reply({
         embeds: [
           {
-            title: `${mode === "kulak" ? "👂" : "🎬"} ${data!.title}`,
+            title: `${SCENELESS.includes(mode) ? "🎉" : "🎬"} ${data!.title}`,
             url,
             description:
-              mode === "kulak"
-                ? `**${data!.host}** bir kulaktan kulağa oyunu kurdu. Sahne yok; gel, fısıltıyı sen de bozalım!`
+              SCENELESS.includes(mode)
+                ? `**${data!.host}** bir **${MODE_NAMES[mode]}** oyunu kurdu. Sahne yok, sadece sesler. Gel, katıl!`
                 : `**${data!.host}** bir dublaj odası kurdu. Gel, karakterini seç!`,
             color: ORANGE,
             fields: [

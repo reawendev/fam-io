@@ -39,6 +39,10 @@ export type BadgeStats = {
   card_wins?: number;
   chains?: number;
   phones?: number;
+  parties?: number;
+  party_wins?: number;
+  stories?: number;
+  requests_filled?: number;
   scripts?: number;
   foleys?: number;
   items?: number;
@@ -110,6 +114,9 @@ export const BADGES: BadgeDef[] = [
   { id: "hanedan", name: "Hanedan", desc: "5 hafta liderlik tablosunda birinci ol.", tier: "altin", icon: "Castle", metric: (s) => s.week_wins ?? 0, goal: 5 },
 
   // --- Oyun modları ---
+  { id: "partici", name: "Partici", desc: "Bir parti oyunu oyna (Kim konuştu?, Efekt yarışması, Duygu ruleti).", tier: "bronz", icon: "PartyPopper", metric: (s) => s.parties ?? 0, goal: 1 },
+  { id: "parti_krali", name: "Parti Kralı", desc: "3 parti oyununu birinci bitir.", tier: "altin", icon: "Crown", metric: (s) => s.party_wins ?? 0, goal: 3 },
+  { id: "hikaye_anlatici", name: "Hikâye Anlatıcı", desc: "Bir sesli hikâyeye parça ekle.", tier: "bronz", icon: "BookOpen", metric: (s) => s.stories ?? 0, goal: 1 },
   { id: "kulak_misafiri", name: "Kulak Misafiri", desc: "Bir kulaktan kulağa oyununda yer al.", tier: "bronz", icon: "Ear", metric: (s) => s.phones ?? 0, goal: 1 },
   { id: "fisildayan", name: "Fısıldayan", desc: "10 kulaktan kulağa oyunu oyna.", tier: "gumus", icon: "Ear", metric: (s) => s.phones ?? 0, goal: 10 },
   { id: "zincir_halkasi", name: "Zincir Halkası", desc: "Bir taklit zinciri oyununda yer al.", tier: "bronz", icon: "Link2", metric: (s) => s.chains ?? 0, goal: 1 },
@@ -123,6 +130,8 @@ export const BADGES: BadgeDef[] = [
   { id: "yenilmez", name: "Yenilmez", desc: "5 düello turnuvası kazan.", tier: "altin", icon: "Trophy", metric: (s) => s.duel_titles ?? 0, goal: 5 },
 
   // --- Mağaza ve ekip ---
+  { id: "istek_avcisi", name: "İstek Avcısı", desc: "Bir sahne isteğini karşıla.", tier: "bronz", icon: "Inbox", metric: (s) => s.requests_filled ?? 0, goal: 1, creator: true },
+  { id: "dilek_perisi", name: "Dilek Perisi", desc: "5 sahne isteğini karşıla.", tier: "gumus", icon: "WandSparkles", metric: (s) => s.requests_filled ?? 0, goal: 5, creator: true },
   { id: "koleksiyoncu", name: "Koleksiyoncu", desc: "Mağazadan 5 ürün al.", tier: "gumus", icon: "ShoppingBag", metric: (s) => s.items ?? 0, goal: 5 },
   { id: "takim_oyuncusu", name: "Takım Oyuncusu", desc: "Bir ekibe katıl.", tier: "bronz", icon: "Users", metric: (s) => (s.team ? 1 : 0), goal: 1 },
 ];

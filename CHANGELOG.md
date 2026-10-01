@@ -1,5 +1,36 @@
 # Değişiklik notları
 
+## 0.8.0 — 2 Ekim 2026
+
+### Yeni sahnesiz parti modları
+- **Kim konuştu?** Herkes aynı cümleyi sesini değiştirerek okur. Kayıtlar isimsiz ve karışık çalınır, her birinin kime ait olduğu tahmin edilir. Doğru tahmin +1, seni tanıyamayan her kişi için +1 puan.
+- **Efekt yarışması:** Ekrana bir efekt çıkar (30 görev: kapı gıcırtısı, dinozor kükremesi…). Herkes ağzıyla ya da eşyalarla yapar, isimsiz kayıtlar oylanır; aldığın her oy +1 puan.
+- **Duygu ruleti:** Herkes aynı cümleyi kendisine gizlice düşen duyguyla okur (12 duygu). Diğerleri duyguyu tahmin eder; doğru bilinirse tahmin eden de okuyan da +1 puan.
+- Üçü de 3 tur: kayıt → tahmin/oy → açıklama. Kayıtlar `p/<rastgele anahtar>/` yoluna yüklenir; dosya adından bile kimin olduğu anlaşılmaz. Oda sahibi takılanları atlayabilir, odadan çıkarılanlar beklenmez.
+- **Sesli hikâye:** Bir açılış cümlesiyle başlar (20 açılış). Sırası gelen sadece bir önceki parçayı dinleyip hikâyeye bir cümle ekler; herkese 2 (iki kişide 3) sıra gelir. Finalde bütün hikâye baştan sona çalınır.
+- Sonuçlar `/p/<id>` linkiyle paylaşılır. XP: parti oyunlarında puan başına +5 (katılım +5, birinci +15 daha), hikâyede parça başına +5.
+- Yeni rozetler: Partici, Parti Kralı, Hikâye Anlatıcı.
+- Oyna sayfası ve lobideki mod seçici "Sahnesiz" ve "Sahneli" diye ikiye ayrıldı. Discord `/dublaj` komutuna yeni modlar eklendi.
+
+### Lobi efekt düğmeleri
+- Lobide basınca odadaki herkese çalan sesler (Supabase Realtime, veritabanına yazmaz): Ba-dum-tss, Korna, Alkış ücretsiz.
+- Mağazada yeni "Efekt düğmeleri" bölümü: Cırcır böceği, Boing, Hüzünlü trombon, Plak cızırtısı, Alarm, Gong, Zafer marşı.
+- Başkalarının efektleri tek tuşla sessize alınabilir; aynı kişiden art arda gelen sesler sınırlanır.
+
+### Sahne istek panosu (`/istekler`)
+- Görmek istediğin sahneyi yaz, isteklere oy ver (aynı anda en fazla 5 açık istek).
+- "Ben ekleyeyim" ile açılan sahne editörü, kaydedince isteği otomatik karşılar; ya da daha önce eklediğin bir sahneyi seçersin.
+- Karşılayan +20 XP ve oy başına +2 XP (en çok 20 oy), isteyen +5 XP. Yeni rozetler: İstek Avcısı, Dilek Perisi.
+
+### Profil
+- **Vitrin:** En sevdiğin 3 dublajı ya da oyunu iğne düğmesiyle profilin en üstüne sabitle.
+- Yeni **Oyunlar** sekmesi: oynadığın kulaktan kulağa ve parti oyunları.
+- Kapak tasarımı düzeltildi: kapak artık profil fotoğrafının ve ismin önüne geçmiyor; isim ve bilgiler kapağın altında, sadece fotoğraf kapağa taşıyor.
+
+### Güncelleme
+- Supabase SQL Editor'da `supabase/migrations/008_parti_istek_vitrin.sql` dosyasını bir kez çalıştır (007'den sonra).
+- Discord komutlarını kullanıyorsan yeni mod seçenekleri için `node scripts/discord-komutlari.mjs` komutunu tekrar çalıştır.
+
 ## 0.7.0 — 1 Ekim 2026
 
 ### Oyun kur (`/oyna`)

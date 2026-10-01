@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Clapperboard, Flame, Heart, ImagePlus, Mic, Pencil, Play, Shield, ShoppingBag, Sparkles, Square, Trash2, Trophy, Video, Volume2, X } from "lucide-react";
+import { Camera, Clapperboard, Flame, Gamepad2, Heart, Pin, ImagePlus, Mic, Pencil, Play, Shield, ShoppingBag, Sparkles, Square, Trash2, Trophy, Video, Volume2, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -13,9 +13,10 @@ import { compatLabel, compatPercent, currentStreak, levelInfo, levelTitle, strea
 import { ensureUser, errMsg, publicUrl, sb } from "@/lib/supabase";
 import { bannerClass, PLAQUES } from "@/lib/shop";
 import Guestbook from "@/components/Guestbook";
+import { fetchUserGames, GameCard, inShowcase, PinButton, type GameItem } from "@/components/Showcase";
 import VoiceRecorder from "@/components/VoiceRecorder";
 import { bannerImage } from "@/lib/image";
-import type { Profile, SceneListItem } from "@/lib/types";
+import type { Profile, SceneListItem, ShowcaseItem } from "@/lib/types";
 import BadgeIcon from "@/components/BadgeIcon";
 import AwardPlaque from "@/components/AwardPlaque";
 import { computeBadges, featuredBadges, fetchBadgeStats, TIER_LABEL, type BadgeState } from "@/lib/badges";
@@ -35,7 +36,9 @@ export default function ProfilePage() {
   const [badges, setBadges] = useState<BadgeState[] | null>(null);
   const [creator, setCreator] = useState<CreatorStats | null>(null);
   const [scenes, setScenes] = useState<SceneListItem[]>([]);
-  const [tab, setTab] = useState<"dublajlar" | "sahneler">("dublajlar");
+  const [tab, setTab] = useState<"dublajlar" | "oyunlar" | "sahneler">("dublajlar");
+  const [games, setGames] = useState<GameItem[] | null>(null);
+  const [pinBusy, setPinBusy] = useState(false);
   const [dubsLoaded, setDubsLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [team, setTeam] = useState<{ slug: string; name: string; tag: string; color: string } | null>(null);
@@ -62,6 +65,9 @@ export default function ProfilePage() {
         .maybeSingle()
         .then(({ data }) => setTeam(((data as unknown as { teams: { slug: string; name: string; tag: string; color: string } } | null)?.teams) ?? null));
       setScenes(((sc as SceneListItem[]) ?? []).filter((x) => x.line_count > 0));
+      fetchUserGames(p.id)
+        .then(setGames)
+        .catch(() => setGames([]));
       // Rozetler bağımsız: istatistik alınamazsa (ör. migration 004 yoksa) sadece rozet bölümü gizlenir
       try {
         setBadges(st ? computeBadges(st) : []);
@@ -107,6 +113,23 @@ export default function ProfilePage() {
   const streak = currentStreak(p);
   const safe = streakDoneToday(p);
   const likes = dubs.reduce((s, d) => s + d.like_count, 0);
+  const showcase: ShowcaseItem[] = (p.showcase ?? []).filter((x) =>
+    x.t === "dub" ? dubs.some((d) => d.id === x.id) : (games ?? []).some((g) => g.id === x.id),
+  );
+
+  async function togglePin(t: ShowcaseItem["t"], id: string) {
+    const cur = p.showcase ?? [];
+    const on = inShowcase(cur, t, id);
+    if (!on && cur.length >= 3) return setError("Vitrine en fazla 3 şey sabitlenebilir. Önce birini kaldır.");
+    const next = on ? cur.filter((x) => !(x.t === t && x.id === id)) : [...cur, { t, id }];
+    setPinBusy(true);
+    setError(null);
+    const { error } = await sb().rpc("set_showcase", { p_items: next });
+    setPinBusy(false);
+    if (error) return setError(errMsg(error));
+    setProfile((pr) => (pr ? { ...pr, showcase: next } : pr));
+    await refreshMe();
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
@@ -116,90 +139,122 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Kapak */}
-      <div className="relative -mx-4 mt-0 h-36 overflow-hidden sm:mx-0 sm:mt-6 sm:h-48 sm:rounded-[var(--radius-card)] sm:border sm:border-line">
-        {p.banner_path ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={publicUrl("avatars", p.banner_path)} alt="" className="absolute inset-0 size-full object-cover" />
-        ) : (
-          <div className={cx("absolute inset-0", p.equipped?.banner ? bannerClass(p.equipped.banner) : "bg-[radial-gradient(900px_200px_at_85%_0%,#ff7a1a22,transparent),linear-gradient(180deg,#18181b,#111113)]")} />
-        )}
-        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-bg/80 to-transparent" />
-        {team && (
-          <Link
-            href={`/ekip/${team.slug}`}
-            className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-md bg-black/60 px-2 py-1 text-xs font-medium backdrop-blur-sm hover:bg-black/75"
-            style={{ color: team.color }}
-          >
-            <Shield className="size-3.5" /> [{team.tag}] {team.name}
-          </Link>
-        )}
-      </div>
-
-      {/* Başlık */}
-      <section className="flex flex-col gap-6 pb-8 sm:flex-row sm:items-end sm:justify-between">
-        <div className="-mt-10 flex items-end gap-4 sm:-mt-12 sm:pl-6">
-          <span className="rounded-full bg-bg p-1">
-            <Avatar name={p.display_name} color={p.color} path={p.avatar_path} size={88} frame={p.equipped?.frame} className="ring-1 ring-line-strong" />
-          </span>
-          <div className="min-w-0 pb-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-2xl font-semibold tracking-tight sm:text-[28px]">
-                <UserName name={p.display_name} fx={p.equipped?.name} />
-              </h1>
-              {p.voice_path && <VoiceButton path={p.voice_path} />}
-              {badges &&
-                featuredBadges(badges).map((b) => (
-                  <span key={b.id} title={`${b.name}${b.note ? " · " + b.note : ""} — ${b.desc}`}>
-                    <BadgeIcon id={b.id} tier={b.tier} icon={b.icon} size={28} />
-                  </span>
-                ))}
-            </div>
-            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-muted">
-              <span>
-                @{p.username} · {new Date(p.created_at).toLocaleDateString("tr-TR", { month: "long", year: "numeric" })} tarihinden beri
-              </span>
-              {creator && creator.scenes > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-surface-2 px-1.5 py-0.5 text-xs text-fg-2" title="Kütüphaneye sahne ekledi">
-                  <Video className="size-3" /> Yapımcı · {creator.scenes} sahne
-                </span>
-              )}
-            </p>
-            {p.bio && <p className="mt-2 max-w-lg text-sm text-fg-2">{p.bio}</p>}
-          </div>
+      {/* Kapak + başlık: kapak üstte, sadece profil fotoğrafı kapağın altına taşar */}
+      <section className="relative -mx-4 mb-6 overflow-hidden border-b border-line bg-surface sm:mx-0 sm:mt-6 sm:rounded-[var(--radius-card)] sm:border">
+        <div className="relative h-32 sm:h-48">
+          {p.banner_path ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={publicUrl("avatars", p.banner_path)} alt="" className="absolute inset-0 size-full object-cover" />
+          ) : (
+            <div className={cx("absolute inset-0", p.equipped?.banner ? bannerClass(p.equipped.banner) : "bg-[radial-gradient(900px_200px_at_85%_0%,#ff7a1a22,transparent),linear-gradient(180deg,#18181b,#111113)]")} />
+          )}
+          <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/45 to-transparent" />
+          {team && (
+            <Link
+              href={`/ekip/${team.slug}`}
+              className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-md bg-black/60 px-2 py-1 text-xs font-medium backdrop-blur-sm hover:bg-black/75"
+              style={{ color: team.color }}
+            >
+              <Shield className="size-3.5" /> [{team.tag}] {team.name}
+            </Link>
+          )}
         </div>
-        <div className="flex flex-col items-start gap-3 sm:items-end">
-          <div className="flex flex-wrap gap-2 sm:justify-end">
-            {badges?.some((b) => b.id === "kurucu" && b.earned) && <AwardPlaque eyebrow="FAM-IO · ÖZEL ROZET" title="Kurucu" tone="gold" />}
-            {p.equipped?.plaque && PLAQUES[p.equipped.plaque] && (
-              <AwardPlaque eyebrow="FAM-IO · PLAKET" title={PLAQUES[p.equipped.plaque].title} tone={PLAQUES[p.equipped.plaque].tone} />
+
+        <div className="relative z-10 px-4 pb-5 sm:px-6">
+          <div className="-mt-11 flex items-end justify-between gap-3 sm:-mt-14">
+            <span className="shrink-0 rounded-full bg-surface p-1">
+              <Avatar name={p.display_name} color={p.color} path={p.avatar_path} size={96} frame={p.equipped?.frame} className="ring-1 ring-line-strong" />
+            </span>
+            {isMe && (
+              <div className="flex flex-wrap justify-end gap-2 pb-1">
+                <Button size="sm" icon={<Pencil className="size-3.5" />} onClick={() => setEditing(true)}>
+                  Profili düzenle
+                </Button>
+                <ButtonLink href="/magaza" size="sm" variant="ghost" icon={<ShoppingBag className="size-3.5" />}>
+                  Mağaza
+                </ButtonLink>
+              </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
-          {isMe && (
-            <>
-              <Button size="sm" icon={<Pencil className="size-3.5" />} onClick={() => setEditing(true)}>
-                Profili düzenle
-              </Button>
-              <ButtonLink href="/magaza" size="sm" variant="ghost" icon={<ShoppingBag className="size-3.5" />}>
-                Mağaza
-              </ButtonLink>
-            </>
-          )}
-          {myCompat && (
-            <div className="panel flex items-center gap-3 px-3 py-2">
-              <Sparkles className="size-4 text-accent" />
-              <div>
-                <p className="text-sm font-medium">Seninle uyumu %{compatPercent(myCompat.score)}</p>
-                <p className="text-xs text-muted">
-                  {compatLabel(compatPercent(myCompat.score))} · {myCompat.shared_dubs} sahne birlikte
-                </p>
+
+          <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="min-w-0 truncate text-2xl font-semibold tracking-tight sm:text-[28px]">
+                  <UserName name={p.display_name} fx={p.equipped?.name} />
+                </h1>
+                {p.voice_path && <VoiceButton path={p.voice_path} />}
+                {badges &&
+                  featuredBadges(badges).map((b) => (
+                    <span key={b.id} title={`${b.name}${b.note ? " · " + b.note : ""} — ${b.desc}`}>
+                      <BadgeIcon id={b.id} tier={b.tier} icon={b.icon} size={28} />
+                    </span>
+                  ))}
               </div>
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+                <span>
+                  @{p.username} · {new Date(p.created_at).toLocaleDateString("tr-TR", { month: "long", year: "numeric" })} tarihinden beri
+                </span>
+                {creator && creator.scenes > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-surface-2 px-1.5 py-0.5 text-xs text-fg-2" title="Kütüphaneye sahne ekledi">
+                    <Video className="size-3" /> Yapımcı · {creator.scenes} sahne
+                  </span>
+                )}
+              </p>
+              {p.bio && <p className="mt-2 max-w-lg text-sm text-fg-2">{p.bio}</p>}
             </div>
-          )}
+
+            {(badges?.some((b) => b.id === "kurucu" && b.earned) || (p.equipped?.plaque && PLAQUES[p.equipped.plaque]) || myCompat) && (
+              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                {badges?.some((b) => b.id === "kurucu" && b.earned) && <AwardPlaque eyebrow="FAM-IO · ÖZEL ROZET" title="Kurucu" tone="gold" />}
+                {p.equipped?.plaque && PLAQUES[p.equipped.plaque] && (
+                  <AwardPlaque eyebrow="FAM-IO · PLAKET" title={PLAQUES[p.equipped.plaque].title} tone={PLAQUES[p.equipped.plaque].tone} />
+                )}
+                {myCompat && (
+                  <div className="flex items-center gap-3 rounded-lg border border-line bg-bg px-3 py-2">
+                    <Sparkles className="size-4 text-accent" />
+                    <div>
+                      <p className="text-sm font-medium">Seninle uyumu %{compatPercent(myCompat.score)}</p>
+                      <p className="text-xs text-muted">
+                        {compatLabel(compatPercent(myCompat.score))} · {myCompat.shared_dubs} sahne birlikte
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </section>
+
+      {/* Vitrin */}
+      {(showcase.length > 0 || (isMe && dubsLoaded && (dubs.length > 0 || (games?.length ?? 0) > 0))) && (
+        <section className="mb-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Pin className="size-4 text-accent" />
+            <h2 className="text-sm font-medium">Vitrin</h2>
+            {isMe && <span className="text-xs text-muted">{showcase.length}/3</span>}
+          </div>
+          {showcase.length === 0 ? (
+            <div className="rounded-[var(--radius-card)] border border-dashed border-line-strong p-5 text-center text-sm text-muted">
+              Dublajlarındaki ya da oyunlarındaki iğne düğmesiyle en sevdiğin 3 şeyi buraya sabitle.
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {showcase.map((x) => {
+                const d = x.t === "dub" ? dubs.find((y) => y.id === x.id) : undefined;
+                const g = x.t !== "dub" ? games?.find((y) => y.id === x.id) : undefined;
+                return (
+                  <div key={x.t + x.id} className="relative">
+                    {d ? <DubCard dub={d} highlight={p.display_name} /> : g ? <GameCard g={g} /> : null}
+                    {isMe && <PinButton on disabled={pinBusy} onClick={() => togglePin(x.t, x.id)} />}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* İstatistikler */}
       <section className="grid gap-px overflow-hidden rounded-[var(--radius-card)] border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
@@ -251,6 +306,11 @@ export default function ProfilePage() {
             <TabBtn on={tab === "dublajlar"} onClick={() => setTab("dublajlar")} count={dubs.length}>
               Dublajlar
             </TabBtn>
+            {((games?.length ?? 0) > 0 || isMe) && (
+              <TabBtn on={tab === "oyunlar"} onClick={() => setTab("oyunlar")} count={games?.length ?? 0}>
+                Oyunlar
+              </TabBtn>
+            )}
             {(scenes.length > 0 || isMe) && (
               <TabBtn on={tab === "sahneler"} onClick={() => setTab("sahneler")} count={scenes.length}>
                 Eklediği sahneler
@@ -280,7 +340,40 @@ export default function ProfilePage() {
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
                 {dubs.map((d) => (
-                  <DubCard key={d.id} dub={d} highlight={p.display_name} />
+                  <div key={d.id} className="relative">
+                    <DubCard dub={d} highlight={p.display_name} />
+                    {isMe && <PinButton on={inShowcase(p.showcase, "dub", d.id)} disabled={pinBusy} onClick={() => togglePin("dub", d.id)} />}
+                  </div>
+                ))}
+              </div>
+            )
+          ) : tab === "oyunlar" ? (
+            games === null ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Skeleton className="h-28 rounded-[var(--radius-card)]" />
+                <Skeleton className="h-28 rounded-[var(--radius-card)]" />
+              </div>
+            ) : games.length === 0 ? (
+              <EmptyState
+                icon={<Gamepad2 className="size-5" />}
+                title={isMe ? "Henüz sahnesiz oyun oynamadın" : "Henüz oyun yok"}
+                action={
+                  isMe && (
+                    <ButtonLink href="/oyna" size="sm" variant="primary">
+                      Oyun kur
+                    </ButtonLink>
+                  )
+                }
+              >
+                Kulaktan kulağa, Kim konuştu?, Efekt yarışması, Duygu ruleti ve Sesli hikâye oyunları burada görünür.
+              </EmptyState>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {games.map((g) => (
+                  <div key={g.id} className="relative">
+                    <GameCard g={g} />
+                    {isMe && <PinButton on={inShowcase(p.showcase, g.t, g.id)} disabled={pinBusy} onClick={() => togglePin(g.t, g.id)} />}
+                  </div>
                 ))}
               </div>
             )

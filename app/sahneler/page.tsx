@@ -1,6 +1,6 @@
 "use client";
 
-import { Clapperboard, Flame, Pencil, Play, Plus, Search, SearchX, Users, X } from "lucide-react";
+import { Clapperboard, Flame, Pencil, Play, Plus, Search, SearchX, Users, X, Inbox } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -112,9 +112,14 @@ export default function Sahneler() {
         title="Sahneler"
         description="Arkadaşlarının eklediği sahneler. Birini seç, oda kur, kodu paylaş."
         actions={
-          <ButtonLink href="/sahneler/yeni" variant="primary" icon={<Plus className="size-4" />}>
-            Sahne ekle
-          </ButtonLink>
+          <div className="flex gap-2">
+            <ButtonLink href="/istekler" icon={<Inbox className="size-4" />}>
+              İstekler
+            </ButtonLink>
+            <ButtonLink href="/sahneler/yeni" variant="primary" icon={<Plus className="size-4" />}>
+              Sahne ekle
+            </ButtonLink>
+          </div>
         }
       />
 

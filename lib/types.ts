@@ -36,7 +36,7 @@ export type SceneFull = Scene & { scene_roles: SceneRole[]; scene_lines: SceneLi
 export const SCENE_FULL_SELECT = "*, scene_roles(*), scene_lines(*), creator:profiles(username, display_name, color, avatar_path)";
 
 export type RoomStatus = "lobby" | "writing" | "recording" | "finale";
-export type GameMode = "klasik" | "zincir" | "senarist" | "duello" | "kulak";
+export type GameMode = "klasik" | "zincir" | "senarist" | "duello" | "kulak" | "kim" | "efekt" | "duygu" | "hikaye";
 export type GameMod = "kart" | "hain" | "foley";
 
 export type Room = {
@@ -52,7 +52,20 @@ export type Room = {
   banned?: string[];
   mode?: GameMode;
   mods?: GameMod[];
-  mode_state?: { order?: string[]; players?: string[]; champion?: string; round?: number; game?: string | null };
+  mode_state?: {
+    order?: string[];
+    players?: string[];
+    champion?: string;
+    round?: number;
+    rounds?: number;
+    game?: string | null;
+    /** parti modları: record | answer | reveal */
+    phase?: "record" | "answer" | "reveal";
+    prompt?: string;
+    turn?: number;
+    turns?: number;
+    topic?: string;
+  };
   foley_user?: string | null;
   created_at: string;
 };
@@ -115,8 +128,12 @@ export type Profile = {
   voice_path?: string | null;
   equipped?: Equipped;
   spent?: number;
+  /** Profil vitrini: en fazla 3 dublaj / oyun */
+  showcase?: ShowcaseItem[];
   created_at: string;
 };
+
+export type ShowcaseItem = { t: "dub" | "kulak" | "parti"; id: string };
 
 export type ProfileLite = Pick<Profile, "username" | "display_name" | "color"> & { avatar_path?: string | null; equipped?: Equipped };
 
