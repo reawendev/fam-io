@@ -7,7 +7,7 @@ import AwardPlaque from "@/components/AwardPlaque";
 import { Avatar, Button, ButtonLink, cx, EmptyState, Notice, PageHeader, Skeleton, UserName } from "@/components/ui";
 import { refreshMe, useMe } from "@/lib/auth";
 import { levelInfo } from "@/lib/progress";
-import { balance, bannerClass, BOARD_INFO, KIND_LABEL, PLAQUES, playBoard, playJingle, type ShopItem, type ShopKind } from "@/lib/shop";
+import { balance, bannerClass, BOARD_INFO, KIND_LABEL, PLAQUES, playItemSound, type ShopItem, type ShopKind } from "@/lib/shop";
 import { errMsg, sb } from "@/lib/supabase";
 
 const KINDS: ShopKind[] = ["frame", "name", "banner", "plaque", "sound", "board"];
@@ -195,17 +195,17 @@ function Preview({ it, name, color, avatar }: { it: ShopItem; name: string; colo
   if (it.kind === "board")
     return (
       <button
-        onClick={() => playBoard(it.id)}
+        onClick={() => playItemSound({ id: it.id, kind: "board", audio_path: it.audio_path })}
         className="flex size-20 flex-col items-center justify-center gap-1 rounded-2xl border border-line-strong bg-surface-2 shadow-lg shadow-black/40 transition-transform hover:scale-105 active:scale-95"
         aria-label={`${it.name} dinle`}
       >
-        <span className="text-3xl leading-none">{BOARD_INFO[it.id]?.emoji ?? "🔊"}</span>
+        <span className="text-3xl leading-none">{it.emoji ?? BOARD_INFO[it.id]?.emoji ?? "🔊"}</span>
         <span className="text-[10px] text-muted">dinle</span>
       </button>
     );
   return (
     <button
-      onClick={() => playJingle(it.id)}
+      onClick={() => playItemSound({ id: it.id, kind: "sound", audio_path: it.audio_path })}
       className="flex size-16 items-center justify-center rounded-full bg-accent text-accent-fg shadow-lg shadow-black/40 transition-transform hover:scale-105"
       aria-label={`${it.name} dinle`}
     >

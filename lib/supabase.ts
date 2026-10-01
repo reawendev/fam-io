@@ -36,7 +36,7 @@ export async function ensureUser(): Promise<User> {
   throw new Error("Devam etmek için giriş yapman gerekiyor.");
 }
 
-export type Bucket = "scenes" | "recordings" | "avatars";
+export type Bucket = "scenes" | "recordings" | "avatars" | "sounds";
 
 /** Herkese açık dosya adresi (istemci gerektirmez; sunucuda da çalışır) */
 export function publicUrl(bucket: Bucket, path: string) {
@@ -68,6 +68,7 @@ export function serverOffset(): Promise<number> {
 }
 
 const MIGRATION_HINT: [RegExp, string][] = [
+  [/admin_save_sound|admin_clear_sound|admin_delete_sound|audio_path|emoji|sounds/i, "009_isim_efektleri_ses_dosyalari.sql"],
   [/party_|scene_request|showcase|_story|board|shop_items_kind_check/i, "008_parti_istek_vitrin.sql"],
   [/create_game|phone_|kulak|scene_id.*null|rooms_mode_check/i, "007_oyun_kur_kulaktan_kulaga.sql"],
   [/set_room_mode|claim_foley|write_line|finish_writing|save_foley|duel_|room_cards|room_secrets|room_foley|room_line_texts|dub_cards|dub_secrets|dub_foley|dub_line_texts|reveal_impostor|post_results|mode_stats|shop_items|user_items|buy_item|equip_item|profile_comments|banner_path|voice_path|equipped|teams|team_|create_team|join_team|leave_team|discord_link|'rooms' and|mode_state|foley_user/i, "006_modlar_magaza_ekipler.sql"],

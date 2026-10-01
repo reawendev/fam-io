@@ -1,6 +1,7 @@
 "use client";
 
 import { audioCtx } from "./player";
+import { publicUrl, sb } from "./supabase";
 import type { Equipped } from "./types";
 import type { PlaqueTone } from "@/components/AwardPlaque";
 
@@ -10,7 +11,7 @@ import type { PlaqueTone } from "@/components/AwardPlaque";
  */
 
 export type ShopKind = "frame" | "name" | "plaque" | "sound" | "banner" | "board";
-export type ShopItem = { id: string; kind: ShopKind; name: string; price: number; sort: number };
+export type ShopItem = { id: string; kind: ShopKind; name: string; price: number; sort: number; audio_path?: string | null; emoji?: string | null };
 
 export const KIND_LABEL: Record<ShopKind, string> = {
   frame: "Profil çerçeveleri",
@@ -110,15 +111,15 @@ export function playJingle(id: string | undefined, volume = 0.8) {
   setTimeout(() => out.disconnect(), 2500);
 }
 
-/** Bir oyuncunun "girişte çalacak" sesi: imza sesi > giriş sesi */
+/** Bir oyuncunun "girişte çalacak" sesi: imza sesi > giriş sesi (dosya varsa dosya, yoksa sentez) */
 export function playEntrance(p: { voice_path?: string | null; equipped?: Equipped }, voiceUrl: (path: string) => string, volume = 0.7) {
   if (p.voice_path) {
     const a = new Audio(voiceUrl(p.voice_path));
     a.volume = volume;
-    a.play().catch(() => playJingle(p.equipped?.sound, volume));
+    a.play().catch(() => playSoundId(p.equipped?.sound, volume));
     return;
   }
-  playJingle(p.equipped?.sound, volume);
+  playSoundId(p.equipped?.sound, volume);
 }
 
 // ------------------------------------------------------------
@@ -206,4 +207,47 @@ export function playBoard(id: string, volume = 0.8) {
       break;
   }
   setTimeout(() => out.disconnect(), 3200);
+}
+
+// ------------------------------------------------------------
+// Gerçek ses dosyaları: shop_items.audio_path ('sounds' bucket'ı) doluysa o çalar, yoksa yukarıdaki sentez sesler
+// ------------------------------------------------------------
+export type SoundItem = Pick<ShopItem, "id" | "kind" | "name" | "price" | "sort" | "emoji" | "audio_path">;
+let soundsP: Promise<SoundItem[]> | null = null;
+
+/** Efekt düğmeleri ve giriş sesleri (önbellekli) */
+export function loadSoundItems(force = false): Promise<SoundItem[]> {
+  if (!soundsP || force)
+    soundsP = Promise.resolve(
+      sb()
+        .from("shop_items")
+        .select("*")
+        .in("kind", ["board", "sound"])
+        .order("sort"),
+    ).then(({ data }) => (Array.isArray(data) ? (data as SoundItem[]) : []));
+  return soundsP;
+}
+
+/** Bir mağaza sesini çal: dosya varsa dosya, yoksa sentez */
+export function playItemSound(it: Pick<SoundItem, "id" | "kind" | "audio_path">, volume = 0.8) {
+  if (it.audio_path) {
+    const a = new Audio(publicUrl("sounds", it.audio_path));
+    a.volume = Math.min(1, volume);
+    a.play().catch(() => (it.kind === "board" ? playBoard(it.id, volume) : playJingle(it.id, volume)));
+    return a;
+  }
+  if (it.kind === "board") playBoard(it.id, volume);
+  else playJingle(it.id, volume);
+  return null;
+}
+
+/** Kimliğe göre çal (giriş sesi, uzaktan gelen efekt) */
+export function playSoundId(id: string | undefined, volume = 0.8) {
+  if (!id) return;
+  loadSoundItems()
+    .then((list) => {
+      const it = list.find((x) => x.id === id);
+      playItemSound(it ?? { id, kind: id.startsWith("board_") ? "board" : "sound", audio_path: null }, volume);
+    })
+    .catch(() => playJingle(id, volume));
 }

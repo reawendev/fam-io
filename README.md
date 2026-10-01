@@ -212,6 +212,12 @@ Oda iki yoldan kurulur: **Oyna** sayfasından (`/oyna`) önce modu seçersin, sa
 >  where email = 'kullaniciadi@users.fam-io.app';
 > ```
 
+## 🔊 Ses efektleri
+
+Lobideki efekt düğmeleri ve odaya girişte çalan sesler mağazadan gelir. Hepsinin bir sentez (dosyasız) hali var; istersen **Yönetim → Ses efektleri** bölümünden her birine gerçek ses dosyası yükleyebilir ya da yeni ses ekleyebilirsin (mp3/ogg/wav, en fazla 2 MB, Supabase `sounds` bucket'ı). Fiyatı 0 olan efekt düğmeleri herkeste hazır gelir.
+
+Kısa ses bulmak için [myinstants](https://www.myinstants.com/en/index/tr/) gibi sitelerden indirip yükleyebilirsin. Şarkı, dizi ve reklam kesitleri telifli olabilir; yüklediğin seslerin sorumluluğu sende.
+
 ## 🏅 Rozetler
 
 Rozetlerin çoğu otomatik kazanılır (sunucudaki istatistiklerden hesaplanır). Özel rozetleri **Yönetim paneli**nden (`/yonetim`) verirsin. Panele girebilmek için önce kendine bir kez SQL ile **Kurucu** rozeti ver:

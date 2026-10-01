@@ -1,5 +1,21 @@
 # Değişiklik notları
 
+## 0.8.1 — 2 Ekim 2026
+
+### Yeni isim efektleri (mağaza)
+- **Aurora isim** (1800 XP): dört renk lekesi harflerin içinde yavaşça gezinir (Gradient Text uyarlaması; her zeminde sadece harfler renklenir).
+- **Glitch isim** (2000 XP): kırmızı, yeşil ve mavi katmanlar titreyerek üst üste biner (Animated Glitch Text uyarlaması, `motion` kütüphanesiyle).
+- İkisi de profilde, başlıkta, lobide, liderlikte ve yorumlarda görünür; cihazda "hareketi azalt" açıksa sabit durur.
+
+### Gerçek ses dosyaları
+- Efekt düğmeleri ve giriş sesleri artık gerçek ses dosyası çalabiliyor. Yönetim panelinde yeni **Ses efektleri** bölümü: var olan seslere dosya yükle (mp3/ogg/wav, en fazla 2 MB), adını/emojisini/fiyatını değiştir, yeni efekt düğmesi ya da giriş sesi ekle, sil.
+- Dosyası olmayan sesler eski sentez sesiyle çalmaya devam eder.
+- Dosyalar Supabase'de yeni `sounds` bucket'ında; sadece yönetici yükleyip silebilir.
+
+### Güncelleme
+- Supabase SQL Editor'da `supabase/migrations/009_isim_efektleri_ses_dosyalari.sql` dosyasını bir kez çalıştır (008'den sonra).
+- Yeni paket: `motion` (`npm install` Vercel'de kendiliğinden çalışır).
+
 ## 0.8.0 — 2 Ekim 2026
 
 ### Yeni sahnesiz parti modları

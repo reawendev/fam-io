@@ -5,6 +5,8 @@ import Link from "next/link";
 import { forwardRef, useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { avatarUrl } from "@/lib/supabase";
 import { frameClass, nameClass } from "@/lib/shop";
+import { GradientText } from "./fx/GradientText";
+import { GlitchText } from "./fx/GlitchText";
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
@@ -141,6 +143,8 @@ export function Avatar(props: {
 
 /** İsim; mağazadan alınmış isim efektiyle */
 export function UserName({ name, fx, className }: { name: string; fx?: string; className?: string }) {
+  if (fx === "name_aurora") return <GradientText className={className}>{name}</GradientText>;
+  if (fx === "name_glitch") return <GlitchText text={name} className={className} />;
   return <span className={cx(nameClass(fx), className)}>{name}</span>;
 }
 

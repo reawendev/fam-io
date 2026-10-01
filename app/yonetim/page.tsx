@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, Clapperboard, Eraser, HardDrive, ImageIcon, Send, Settings, Shield, Trash2, UserPlus, Users } from "lucide-react";
+import { Award, Clapperboard, Eraser, HardDrive, ImageIcon, Play, Send, Settings, Shield, Trash2, Upload, UserPlus, Users, Volume2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import BadgeIcon from "@/components/BadgeIcon";
@@ -12,6 +12,7 @@ import { videoThumbnail } from "@/lib/image";
 import { errMsg, publicUrl, sb, type Bucket } from "@/lib/supabase";
 import type { SceneListItem } from "@/lib/types";
 import { fmtMB } from "@/lib/compress";
+import { playItemSound } from "@/lib/shop";
 
 type Stats = {
   users: number;
@@ -114,6 +115,7 @@ export default function Yonetim() {
         <SettingsPanel stats={stats} onSaved={loadStats} />
       </div>
 
+      <SoundsPanel />
       <BadgesPanel />
       <ScenesPanel uid={me.status === "in" ? me.user.id : ""} />
     </main>
@@ -564,6 +566,232 @@ function ScenesPanel({ uid }: { uid: string }) {
           ))}
         </ul>
       )}
+    </Panel>
+  );
+}
+
+// ------------------------------------------------------------
+// Ses efektleri: efekt düğmeleri ve giriş seslerine gerçek ses dosyası yükle
+// ------------------------------------------------------------
+const MAX_SOUND = 2 * 1024 * 1024;
+
+function soundExt(f: File) {
+  const m = f.name.toLowerCase().match(/\.(mp3|ogg|wav|m4a|webm|aac)$/);
+  return m ? m[1] : "mp3";
+}
+
+async function uploadSound(prefix: string, f: File) {
+  if (!f.type.startsWith("audio/") && !/\.(mp3|ogg|wav|m4a|webm|aac)$/i.test(f.name)) throw new Error("Bir ses dosyası seç (mp3, ogg, wav, m4a).");
+  if (f.size > MAX_SOUND) throw new Error("Ses dosyası en fazla 2 MB olabilir.");
+  const path = `${prefix}-${Date.now()}.${soundExt(f)}`;
+  const { error } = await sb().storage.from("sounds").upload(path, f, { contentType: f.type || "audio/mpeg", cacheControl: "31536000" });
+  if (error) throw error;
+  return path;
+}
+
+type SoundRow = { id: string; kind: "board" | "sound"; name: string; price: number; sort: number; emoji: string | null; audio_path: string | null };
+
+function SoundsPanel() {
+  const [rows, setRows] = useState<SoundRow[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ tone: "error" | "info"; text: string } | null>(null);
+  const [draft, setDraft] = useState<Record<string, { name: string; emoji: string; price: string }>>({});
+  const [add, setAdd] = useState<{ kind: "board" | "sound"; name: string; emoji: string; price: string; file: File | null }>({ kind: "board", name: "", emoji: "", price: "0", file: null });
+
+  const load = useCallback(async () => {
+    const { data, error } = await sb().from("shop_items").select("*").in("kind", ["board", "sound"]).order("kind").order("sort");
+    if (error) setMsg({ tone: "error", text: errMsg(error) });
+    const list = (data as SoundRow[]) ?? [];
+    setRows(list);
+    setDraft(Object.fromEntries(list.map((r) => [r.id, { name: r.name, emoji: r.emoji ?? "", price: String(r.price) }])));
+  }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function run(key: string, fn: () => Promise<unknown>, ok: string) {
+    setBusy(key);
+    setMsg(null);
+    try {
+      await fn();
+      setMsg({ tone: "info", text: ok });
+      await load();
+    } catch (e) {
+      setMsg({ tone: "error", text: errMsg(e) });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function save(r: SoundRow, path: string | null) {
+    const d = draft[r.id];
+    const { error } = await sb().rpc("admin_save_sound", {
+      p_id: r.id,
+      p_kind: r.kind,
+      p_name: d?.name ?? r.name,
+      p_price: Number(d?.price ?? r.price) || 0,
+      p_emoji: d?.emoji ?? r.emoji,
+      p_audio_path: path,
+    });
+    if (error) throw error;
+  }
+
+  function replaceFile(r: SoundRow, f: File | undefined) {
+    if (!f) return;
+    run(
+      "f" + r.id,
+      async () => {
+        const path = await uploadSound(r.id, f);
+        await save(r, path);
+        if (r.audio_path) sb().storage.from("sounds").remove([r.audio_path]).catch(() => {});
+      },
+      `${r.name}: ses dosyası yüklendi.`,
+    );
+  }
+
+  return (
+    <Panel icon={<Volume2 className="size-4" />} title="Ses efektleri" className="mt-6">
+      <div className="flex flex-col gap-4 p-4">
+        <p className="text-xs leading-relaxed text-muted">
+          Efekt düğmelerine ve giriş seslerine gerçek ses dosyası yükle (mp3/ogg/wav, en fazla 2 MB). Dosyası olmayan sesler eski sentez sesi çalar. Ses bulmak için{" "}
+          <a href="https://www.myinstants.com/en/index/tr/" target="_blank" rel="noreferrer" className="text-fg-2 underline">
+            myinstants
+          </a>{" "}
+          gibi sitelerden indirip buraya yükleyebilirsin; şarkı ve dizi kesitleri telifli olabilir, sorumluluk yükleyende.
+        </p>
+        {msg && <Notice tone={msg.tone === "error" ? "error" : "info"}>{msg.text}</Notice>}
+        {rows === null ? (
+          <Skeleton className="h-40" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead>
+                <tr className="text-left text-[11px] text-muted">
+                  <th className="pb-2 font-normal">Ses</th>
+                  <th className="pb-2 font-normal">Ad</th>
+                  <th className="pb-2 font-normal">Emoji</th>
+                  <th className="pb-2 font-normal">Fiyat</th>
+                  <th className="pb-2 font-normal">Dosya</th>
+                  <th className="pb-2" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {rows.map((r) => {
+                  const d = draft[r.id] ?? { name: r.name, emoji: r.emoji ?? "", price: String(r.price) };
+                  const dirty = d.name !== r.name || d.emoji !== (r.emoji ?? "") || d.price !== String(r.price);
+                  return (
+                    <tr key={r.id}>
+                      <td className="py-2 pr-2">
+                        <button
+                          className="inline-flex size-8 items-center justify-center rounded-full border border-line-strong text-fg-2 hover:border-accent hover:text-accent"
+                          aria-label={`${r.name} dinle`}
+                          onClick={() => playItemSound(r)}
+                        >
+                          <Play className="size-3.5" />
+                        </button>
+                      </td>
+                      <td className="py-2 pr-2">
+                        <input className="field h-8 w-40 px-2 text-[13px]" value={d.name} maxLength={40} onChange={(e) => setDraft({ ...draft, [r.id]: { ...d, name: e.target.value } })} />
+                        <span className="mt-0.5 block text-[10px] text-muted">{r.kind === "board" ? "efekt düğmesi" : "giriş sesi"}</span>
+                      </td>
+                      <td className="py-2 pr-2">
+                        <input className="field h-8 w-14 px-2 text-center" value={d.emoji} maxLength={4} onChange={(e) => setDraft({ ...draft, [r.id]: { ...d, emoji: e.target.value } })} />
+                      </td>
+                      <td className="py-2 pr-2">
+                        <input className="field h-8 w-20 px-2 font-mono text-[13px]" inputMode="numeric" value={d.price} onChange={(e) => setDraft({ ...draft, [r.id]: { ...d, price: e.target.value.replace(/\D/g, "") } })} />
+                      </td>
+                      <td className="py-2 pr-2">
+                        <span className={cx("text-xs", r.audio_path ? "text-ok" : "text-muted")}>{r.audio_path ? "dosya" : "sentez"}</span>
+                      </td>
+                      <td className="py-2">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {dirty && (
+                            <Button size="sm" variant="primary" loading={busy === "s" + r.id} disabled={!!busy} onClick={() => run("s" + r.id, () => save(r, null), `${d.name} kaydedildi.`)}>
+                              Kaydet
+                            </Button>
+                          )}
+                          <label className={cx("inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-line px-2.5 text-xs text-fg-2 hover:border-line-strong", busy && "pointer-events-none opacity-50")}>
+                            <Upload className="size-3.5" /> {busy === "f" + r.id ? "Yükleniyor…" : r.audio_path ? "Değiştir" : "Dosya yükle"}
+                            <input type="file" accept="audio/*" className="sr-only" onChange={(e) => replaceFile(r, e.target.files?.[0])} />
+                          </label>
+                          {r.audio_path && (
+                            <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => run("c" + r.id, async () => {
+                              const { error } = await sb().rpc("admin_clear_sound", { p_id: r.id });
+                              if (error) throw error;
+                              sb().storage.from("sounds").remove([r.audio_path!]).catch(() => {});
+                            }, `${r.name} sentez sese döndü.`)}>
+                              Sentez
+                            </Button>
+                          )}
+                          <button
+                            className="inline-flex size-8 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-red-300 disabled:opacity-40"
+                            aria-label={`${r.name} sil`}
+                            disabled={!!busy}
+                            onClick={() => {
+                              if (!confirm(`${r.name} mağazadan silinsin mi? Satın alanlarda da kaybolur.`)) return;
+                              run("d" + r.id, async () => {
+                                const { error } = await sb().rpc("admin_delete_sound", { p_id: r.id });
+                                if (error) throw error;
+                                if (r.audio_path) sb().storage.from("sounds").remove([r.audio_path]).catch(() => {});
+                              }, `${r.name} silindi.`);
+                            }}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <form
+          className="flex flex-col gap-2 rounded-lg border border-line bg-bg p-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!add.file) return;
+            run(
+              "add",
+              async () => {
+                const path = await uploadSound(add.kind, add.file!);
+                const { error } = await sb().rpc("admin_save_sound", {
+                  p_id: null,
+                  p_kind: add.kind,
+                  p_name: add.name.trim(),
+                  p_price: Number(add.price) || 0,
+                  p_emoji: add.emoji || null,
+                  p_audio_path: path,
+                });
+                if (error) {
+                  sb().storage.from("sounds").remove([path]).catch(() => {});
+                  throw error;
+                }
+                setAdd({ kind: add.kind, name: "", emoji: "", price: "0", file: null });
+              },
+              "Yeni ses mağazaya eklendi.",
+            );
+          }}
+        >
+          <p className="text-xs font-medium">Yeni ses ekle</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <select className="field h-9 w-40 px-2 text-[13px]" value={add.kind} onChange={(e) => setAdd({ ...add, kind: e.target.value as "board" | "sound" })}>
+              <option value="board">Efekt düğmesi</option>
+              <option value="sound">Giriş sesi</option>
+            </select>
+            <input className="field h-9 w-44" placeholder="Ad" maxLength={40} value={add.name} onChange={(e) => setAdd({ ...add, name: e.target.value })} />
+            <input className="field h-9 w-16 text-center" placeholder="😂" maxLength={4} value={add.emoji} onChange={(e) => setAdd({ ...add, emoji: e.target.value })} />
+            <input className="field h-9 w-24 font-mono" placeholder="Fiyat" inputMode="numeric" value={add.price} onChange={(e) => setAdd({ ...add, price: e.target.value.replace(/\D/g, "") })} />
+            <input type="file" accept="audio/*" className="text-xs text-muted file:mr-2 file:rounded-md file:border-0 file:bg-surface-3 file:px-2.5 file:py-1.5 file:text-fg-2" onChange={(e) => setAdd({ ...add, file: e.target.files?.[0] ?? null })} />
+            <Button variant="primary" size="sm" loading={busy === "add"} disabled={!!busy || !add.file || add.name.trim().length < 1}>
+              Ekle
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted">Fiyatı 0 olan efekt düğmeleri herkeste hazır gelir; diğerleri mağazadan alınır.</p>
+        </form>
+      </div>
     </Panel>
   );
 }
