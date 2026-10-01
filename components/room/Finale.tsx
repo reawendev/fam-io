@@ -231,7 +231,7 @@ export default function Finale({ room, scene, me, players, assignments, isHost, 
                   </span>
                 </>
               ) : (
-                <Credits roles={roles} nickOf={nickOf} actorOf={actorOf} />
+                <Credits roles={roles} nickOf={nickOf} actorOf={actorOf} creator={scene.creator?.display_name} />
               )}
               {!loaded && unlocked === false && <p className="font-mono text-[11px] text-muted">yükleniyor %{Math.round(pct * 100)}</p>}
             </div>
@@ -326,10 +326,12 @@ function Credits({
   roles,
   nickOf,
   actorOf,
+  creator,
 }: {
   roles: { id: string; name: string; color: string }[];
   nickOf: (uid?: string) => string;
   actorOf: (roleId: string) => string | undefined;
+  creator?: string;
 }) {
   return (
     <div className="fade-up flex flex-col items-center gap-5">
@@ -345,6 +347,11 @@ function Credits({
           </li>
         ))}
       </ul>
+      {creator && (
+        <p className="text-xs text-muted">
+          Sahneyi ekleyen <span className="text-fg-2">{creator}</span>
+        </p>
+      )}
     </div>
   );
 }

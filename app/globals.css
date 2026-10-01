@@ -93,6 +93,93 @@ input[type="range"] {
   animation: fade-up 0.4s var(--ease-out-quint) both;
 }
 
+/* İskelet (yükleniyor) */
+@keyframes shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--color-surface-2) 30%, var(--color-surface-3) 50%, var(--color-surface-2) 70%);
+  background-size: 250% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+/* Diyalog / kutlama girişleri */
+@keyframes pop-in {
+  from { transform: translateY(8px) scale(0.97); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.pop-in {
+  animation: pop-in 0.32s var(--ease-out-quint) both;
+}
+
+@keyframes toast-in {
+  from { transform: translateY(14px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes toast-out {
+  to { transform: translateY(6px); opacity: 0; }
+}
+.toast-in { animation: toast-in 0.4s var(--ease-out-quint) both; }
+.toast-out { animation: toast-out 0.25s ease-in both; }
+
+/* Rozet kazanınca dönüp büyüyerek gelen madalyon + parıltı */
+@keyframes badge-reveal {
+  0% { transform: scale(0.4) rotate(-25deg); opacity: 0; }
+  60% { transform: scale(1.12) rotate(6deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.badge-reveal { animation: badge-reveal 0.8s var(--ease-out-quint) both; }
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.92); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+.glow-pulse { animation: glow-pulse 2.2s ease-in-out infinite; }
+
+/* XP sayacı sıçraması */
+@keyframes xp-bump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); color: var(--color-accent); }
+  100% { transform: scale(1); }
+}
+.xp-bump { animation: xp-bump 0.6s var(--ease-out-quint); }
+
+/* Level atlama: ilerleme çubuğu doldurma */
+@keyframes bar-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.bar-fill { transform-origin: left; animation: bar-fill 0.9s 0.25s var(--ease-out-quint) both; }
+
+@keyframes dash-in {
+  from { stroke-dashoffset: 289; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* Boş durum ikonunun etrafında yavaş halka */
+.empty-icon::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 16px;
+  border: 1px dashed var(--color-line-strong);
+  opacity: 0.6;
+}
+
+
+/* Ödül plaketi hologram parıltısı (AwardPlaque) */
+@keyframes plaque-overlay-1 { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(10deg); } }
+@keyframes plaque-overlay-2 { 0%, 100% { transform: rotate(10deg); } 50% { transform: rotate(20deg); } }
+@keyframes plaque-overlay-3 { 0%, 100% { transform: rotate(20deg); } 50% { transform: rotate(30deg); } }
+@keyframes plaque-overlay-4 { 0%, 100% { transform: rotate(30deg); } 50% { transform: rotate(40deg); } }
+@keyframes plaque-overlay-5 { 0%, 100% { transform: rotate(40deg); } 50% { transform: rotate(50deg); } }
+@keyframes plaque-overlay-6 { 0%, 100% { transform: rotate(50deg); } 50% { transform: rotate(60deg); } }
+@keyframes plaque-overlay-7 { 0%, 100% { transform: rotate(60deg); } 50% { transform: rotate(70deg); } }
+@keyframes plaque-overlay-8 { 0%, 100% { transform: rotate(70deg); } 50% { transform: rotate(80deg); } }
+@keyframes plaque-overlay-9 { 0%, 100% { transform: rotate(80deg); } 50% { transform: rotate(90deg); } }
+@keyframes plaque-overlay-10 { 0%, 100% { transform: rotate(90deg); } 50% { transform: rotate(100deg); } }
+
 @media (prefers-reduced-motion: reduce) {
-  .rec-dot, .count-in, .fade-up { animation: none; }
+  .rec-dot, .count-in, .fade-up, .skeleton, .pop-in, .toast-in, .toast-out, .badge-reveal, .glow-pulse, .xp-bump, .bar-fill { animation: none; }
 }

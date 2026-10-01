@@ -24,6 +24,14 @@ export type BadgeStats = {
   best_duo: number;
   member_no: number;
   early_limit: number;
+  /** Sahnelerinin başkaları tarafından tamamlanma sayısı (yapımcı) */
+  scene_plays?: number;
+  /** En çok oynanan tek sahnesinin oynanma sayısı */
+  top_scene?: number;
+  /** Sahnelerinden çıkan dublajların toplam beğenisi */
+  scene_likes?: number;
+  /** Haftalık liderlikte birinci olduğu hafta sayısı */
+  week_wins?: number;
   special: { badge: string; note: string | null; granted_at: string }[];
 };
 
@@ -37,6 +45,8 @@ export type BadgeDef = {
   metric?: (s: BadgeStats) => number;
   goal?: number;
   special?: boolean;
+  /** Yapımcı (sahne ekleme) rozeti */
+  creator?: boolean;
 };
 
 export const BADGES: BadgeDef[] = [
@@ -73,9 +83,20 @@ export const BADGES: BadgeDef[] = [
   // --- Ustalık ---
   { id: "dil_cambazi", name: "Dil Cambazı", desc: "100 replik seslendir.", tier: "gumus", icon: "AudioLines", metric: (s) => s.lines, goal: 100 },
   { id: "ses_bukucu", name: "Ses Bükücü", desc: "Efektli 10 replik seslendir.", tier: "gumus", icon: "WandSparkles", metric: (s) => s.effects, goal: 10 },
-  { id: "yonetmen", name: "Yönetmen", desc: "Kütüphaneye ilk sahneni ekle.", tier: "bronz", icon: "Video", metric: (s) => s.scenes, goal: 1 },
-  { id: "studyo_sahibi", name: "Stüdyo Sahibi", desc: "Kütüphaneye 10 sahne ekle.", tier: "altin", icon: "Building2", metric: (s) => s.scenes, goal: 10 },
   { id: "usta", name: "Usta", desc: "Level 10'a ulaş.", tier: "altin", icon: "Trophy", metric: (s) => levelInfo(s.xp).level, goal: 10 },
+
+  // --- Yapımcı (sahne ekleyenler) ---
+  { id: "yonetmen", name: "Yönetmen", desc: "Kütüphaneye ilk sahneni ekle.", tier: "bronz", icon: "Video", metric: (s) => s.scenes, goal: 1, creator: true },
+  { id: "ilk_gosterim", name: "İlk Gösterim", desc: "Eklediğin bir sahne başkaları tarafından seslendirilsin.", tier: "bronz", icon: "Ticket", metric: (s) => s.scene_plays ?? 0, goal: 1, creator: true },
+  { id: "yapimci", name: "Yapımcı", desc: "Kütüphaneye 3 sahne ekle.", tier: "gumus", icon: "Clapperboard", metric: (s) => s.scenes, goal: 3, creator: true },
+  { id: "gise_rekoru", name: "Gişe Rekoru", desc: "Sahnelerin başkaları tarafından 25 kez seslendirilsin.", tier: "gumus", icon: "Popcorn", metric: (s) => s.scene_plays ?? 0, goal: 25, creator: true },
+  { id: "alkis_tufani", name: "Alkış Tufanı", desc: "Sahnelerinden çıkan dublajlar toplam 50 beğeni alsın.", tier: "gumus", icon: "PartyPopper", metric: (s) => s.scene_likes ?? 0, goal: 50, creator: true },
+  { id: "kult_klasik", name: "Kült Klasik", desc: "Tek bir sahnen 20 kez seslendirilsin.", tier: "altin", icon: "Film", metric: (s) => s.top_scene ?? 0, goal: 20, creator: true },
+  { id: "studyo_sahibi", name: "Stüdyo Sahibi", desc: "Kütüphaneye 10 sahne ekle.", tier: "altin", icon: "Building2", metric: (s) => s.scenes, goal: 10, creator: true },
+
+  // --- Liderlik ---
+  { id: "haftanin_sesi", name: "Haftanın Sesi", desc: "Bir hafta liderlik tablosunda birinci ol.", tier: "altin", icon: "Medal", metric: (s) => s.week_wins ?? 0, goal: 1 },
+  { id: "hanedan", name: "Hanedan", desc: "5 hafta liderlik tablosunda birinci ol.", tier: "altin", icon: "Castle", metric: (s) => s.week_wins ?? 0, goal: 5 },
 ];
 
 /** Kendi görselini eklediğin rozetlerin id'leri (public/badges/<id>.png) */

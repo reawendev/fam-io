@@ -30,7 +30,7 @@ export default function VotePanel({ dubId, scene, me, compact }: { dubId: string
   useEffect(() => {
     (async () => {
       const [{ data: p }, { data: r }] = await Promise.all([
-        sb().from("dub_participants").select("user_id, profiles(username, display_name, color)").eq("dub_id", dubId),
+        sb().from("dub_participants").select("user_id, profiles(username, display_name, color, avatar_path)").eq("dub_id", dubId),
         sb().from("dub_recordings").select("line_id, user_id").eq("dub_id", dubId),
       ]);
       setParts((p as unknown as Part[]) ?? []);
@@ -108,7 +108,7 @@ export default function VotePanel({ dubId, scene, me, compact }: { dubId: string
               onClick={() => !disabled && vote("mvp", p.user_id)}
               disabled={disabled}
               selected={mine}
-              lead={<Avatar name={p.profiles!.display_name} color={p.profiles!.color} size={compact ? 22 : 26} />}
+              lead={<Avatar name={p.profiles!.display_name} color={p.profiles!.color} path={p.profiles!.avatar_path} size={compact ? 22 : 26} />}
               label={
                 <span className="flex items-center gap-1.5">
                   <span className="truncate">{p.profiles!.display_name}</span>

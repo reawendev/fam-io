@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ensureUser, errMsg, sb } from "@/lib/supabase";
-import type { Room, RoomPlayer, RoomRole, SceneFull } from "@/lib/types";
+import { SCENE_FULL_SELECT, type Room, type RoomPlayer, type RoomRole, type SceneFull } from "@/lib/types";
 
 export function useRoom(code: string) {
   const [me, setMe] = useState<string | null>(null);
@@ -19,16 +19,26 @@ export function useRoom(code: string) {
     sceneIdRef.current = sceneId;
     const { data, error } = await sb()
       .from("scenes")
-      .select("*, scene_roles(*), scene_lines(*)")
+      .select(SCENE_FULL_SELECT)
       .eq("id", sceneId)
       .single();
     if (error) throw error;
     setScene(data as SceneFull);
   }, []);
 
+  // Oyunculara profil fotoğrafı / renk ekle (profil değişmedikçe önbellekten)
+  const profileCache = useRef(new Map<string, Pick<RoomPlayer, "color" | "avatar_path" | "username">>());
   const loadPlayers = useCallback(async (roomId: string) => {
     const { data } = await sb().from("room_players").select("*").eq("room_id", roomId).order("joined_at");
-    if (data) setPlayers(data as RoomPlayer[]);
+    if (!data) return;
+    const list = data as RoomPlayer[];
+    const missing = list.map((p) => p.user_id).filter((id) => !profileCache.current.has(id));
+    if (missing.length) {
+      const { data: profs } = await sb().from("profiles").select("id, username, color, avatar_path").in("id", missing);
+      for (const p of (profs as { id: string; username: string; color: string; avatar_path: string | null }[]) ?? [])
+        profileCache.current.set(p.id, { username: p.username, color: p.color, avatar_path: p.avatar_path });
+    }
+    setPlayers(list.map((p) => ({ ...p, ...profileCache.current.get(p.user_id) })));
   }, []);
 
   const loadAssignments = useCallback(async (roomId: string) => {

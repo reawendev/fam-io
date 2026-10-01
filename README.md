@@ -34,21 +34,27 @@ Ekran görüntüleri: docs/ klasörüne koyup aşağıdaki satırların yorumunu
 
 | | |
 |---|---|
-| 👤 **Profiller** | Kullanıcı adı + şifre ile profil. Dublajların, level'in, serin ve en uyumlu partnerlerin profilinde. |
+| 👤 **Profiller** | Kullanıcı adı + şifre ile profil, profil fotoğrafı. Dublajların, level'in, serin ve en uyumlu partnerlerin profilinde. |
+| 🎬 **Yapımcılar** | Sahne ekleyenler her yerde "Oluşturan: …" etiketiyle görünür; sahneleri oynandıkça yapımcı XP'si ve rozet kazanırlar. |
+| 🥇 **Haftalık liderlik** | Her pazartesi sıfırlanan XP sıralaması, geçen haftanın kazananı, tüm zamanlar ve yapımcılar tablosu. Haftayı birinci bitiren "Haftanın Sesi" rozetini alır. |
+| 🔎 **Kütüphane** | Arama, etiketler (#anime, #komedi…), karakter sayısına göre filtre ve "Trend" sıralaması. Her sahnenin kapak görseli var. |
 | 🔥 **Günlük seri** | Her gün bir sahne tamamla, seri büyüsün. Günün ilk sahnesi bonus XP verir. |
 | 🏆 **Level ve XP** | Sahne tamamla, replik seslendir, beğeni topla; level atla. |
 | 💞 **Uyum** | Birlikte yaptığınız sahnelere ve aldıkları beğenilere göre arkadaşlarınla uyum yüzden. |
 | 💬 **Beğeni ve yorum** | Dublajlara beğeni ve yorum bırak, canlı güncellenir. |
-| 🔗 **Paylaşım linki** | Her dublajın herkese açık bir sayfası var; hesabı olmayan da izleyebilir. |
+| 🔗 **Paylaşım linki** | Her dublajın herkese açık bir sayfası var; hesabı olmayan da izleyebilir. Discord/WhatsApp'ta sahne karesi ve seslendirenlerle zengin önizleme kartı çıkar. |
 | 🎛️ **Ses efektleri** | Robot, Sincap, Kalın ses, Dev, Telefon, Megafon, Mağara, Uzaylı. Kayıttan sonra da değiştirilebilir; senkron bozulmaz. |
 | 🗳️ **Final oylaması** | "Turun seslendirmeni" ve "En komik replik". Her oy +10 XP. |
-| 🏅 **Rozetler** | 20+ otomatik rozet ve Kurucu, Erken Üye gibi özel rozetler; en iyileri isminin yanında. |
+| 🏅 **Rozetler** | 30'a yakın otomatik rozet ve Kurucu, Erken Üye gibi özel rozetler; en iyileri isminin yanında. Rozet kazanınca, level atlayınca kutlama animasyonu. |
+| 🛡️ **Oda yönetimi** | Oda sahibi oyuncu çıkarabilir, odayı kilitleyebilir, sahipliği devredebilir. |
+| 🧭 **İlk giriş rehberi** | 3 adımlık kısa tur ve kimseyi beklemeden "tek başına prova". |
+| 🧰 **Yönetim paneli** | Kurucu rozeti olanlara: rozet verme, Discord ayarı, sahne/dublaj/yorum silme, depolama temizliği. |
 | 🗜️ **Otomatik sıkıştırma** | Yüklenen videolar tarayıcıda 720p'ye küçültülür; ücretsiz depolama çok daha geç dolar. |
 | 💬 **Discord bildirimi** | Her yeni dublaj Discord kanalınıza otomatik düşer. |
 | 🎭 **Karakter seçimi** | Herkes lobide istediği karakteri seçer; seçilmeyenler başlarken rastgele dağıtılır. |
 | 🎧 **Orijinali dinle** | Kayıttan önce repliğin orijinal sesini dinle, benzer bir replik uydur. |
 | 🎬 **Replik bazlı kayıt** | 3-2-1 geri sayım, altyazı ve ilerleme çubuğu. Geri sayım sırasındaki sesler finale girmez. |
-| ↻ **Sınırsız tekrar çekim** | Kaydını dinle, beğenmezsen tekrar çek. Kendi sesinle tüm sahneyi önizle. |
+| ↻ **Sınırsız tekrar çekim** | Kaydını dinle, beğenmezsen tekrar çek. Kendi sesinle tüm sahneyi önizle. Kayıt sırasında canlı ses dalgası; ses gelmezse uyarı. |
 | 🍿 **Senkron final** | Final, sunucu saatine göre herkesin ekranında aynı saniyede başlar; sonunda jenerik gelir. |
 | ⬇️ **Videoyu indir** | Dublajlı video tamamen tarayıcıda üretilir (MP4/WebM). Sunucu yok, ücret yok, filigran yok. |
 | 🤫 **Gizli kayıtlar** | Diğer oyuncuların kayıtları veritabanı seviyesinde (RLS) final başlayana kadar görünmez. |
@@ -123,6 +129,7 @@ npm run dev
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon (public) anahtarı |
 | `SITE_PASSWORD` | *(opsiyonel)* Tanımlanırsa site sadece şifreyi bilenlere açılır (paylaşım linkleri hariç) |
 | `NEXT_PUBLIC_AUTH_EMAIL_DOMAIN` | *(opsiyonel)* Kullanıcı adından üretilen gizli e-posta adreslerinin alan adı |
+| `NEXT_PUBLIC_SITE_URL` | *(opsiyonel)* Sitenin tam adresi (paylaşım görselleri için). Vercel'de boş bırakılabilir, otomatik bulunur. |
 
 ### 4. Vercel'e deploy (komut satırından)
 
@@ -154,11 +161,14 @@ Sıfırdan kurulumda sadece `schema.sql` yeterli. Ayrıntılar: [CHANGELOG.md](C
 | Günün ilk sahnesi | +20 + seri × 5 (en çok +50) |
 | Dublajın beğenildi | +5 (beğeni geri alınırsa −5) |
 | Oylamada aldığın her oy | +10 (oy geri alınırsa −10) |
+| **Yapımcı:** eklediğin sahne başkalarınca tamamlandı | +15 |
+| **Yapımcı:** o sahneden çıkan dublaj beğenildi | +2 |
 
 - **Level:** 1→2 için 100 XP, sonraki her level 50 XP daha fazla ister.
 - **Seri:** En az bir replik kaydettiğin bir sahne finale ulaşınca o gün sayılır (İstanbul saati). Bir gün atlarsan sıfırlanır.
 - **Uyum:** Birlikte tamamlanan sahne başına +10, o sahnelerin aldığı beğeni başına +3 puan; yüzdeye çevrilir.
-- Bir odada finali tekrar oynatmak yeni XP vermez; her tur bir kez sayılır.
+- Bir odada finali tekrar oynatmak yeni XP vermez; her tur bir kez sayılır. Kendi sahneni kendin oynarsan yapımcı XP'si verilmez.
+- **Haftalık liderlik:** Pazartesi 00:00'dan (İstanbul) itibaren kazanılan XP. Haftayı birinci bitiren "Haftanın Sesi" rozetini alır.
 
 > **Şifresini unutan bir arkadaşın için** Supabase SQL Editor'da (kullanıcı adını ve yeni şifreyi değiştir):
 > ```sql
@@ -168,7 +178,7 @@ Sıfırdan kurulumda sadece `schema.sql` yeterli. Ayrıntılar: [CHANGELOG.md](C
 
 ## 🏅 Rozetler
 
-Rozetlerin çoğu otomatik kazanılır (sunucudaki istatistiklerden hesaplanır). Özel rozetleri Supabase SQL Editor'dan sen verirsin:
+Rozetlerin çoğu otomatik kazanılır (sunucudaki istatistiklerden hesaplanır). Özel rozetleri **Yönetim paneli**nden (`/yonetim`) verirsin. Panele girebilmek için önce kendine bir kez SQL ile **Kurucu** rozeti ver:
 
 ```sql
 -- ver (kurucu, beta, discord, destekci ya da katalog dışı yeni bir ad)
@@ -182,11 +192,23 @@ delete from user_badges where badge = 'beta' and user_id = (select id from profi
 update app_settings set value = '100' where key = 'early_member_limit';
 ```
 
-Görselleri kendin üretmek istersen: [docs/rozet-gorselleri.md](docs/rozet-gorselleri.md).
+Kurucu rozeti olan herkes yönetim paneline girebilir. Görselleri kendin üretmek istersen: [docs/rozet-gorselleri.md](docs/rozet-gorselleri.md).
+
+## 🧰 Yönetim paneli
+
+`/yonetim` (sadece Kurucu rozeti olanlar):
+
+- **Depolama:** Supabase'in 1 GB'lık ücretsiz alanının ne kadarı dolu. "Kullanılmayan dosyaları bul" ile tekrar çekimlerden, silinen odalardan ve yarım kalan yüklemelerden kalan dosyaları tek tıkla sil. "3 günlük eski odaları sil" hareketsiz odaları temizler (tamamlanan dublajlar silinmez).
+- **Ayarlar:** Discord webhook, site adresi, Erken Üye sınırı; Discord'a test mesajı.
+- **Rozetler:** Üye ara, rozet ver ya da rozetine tıklayıp geri al.
+- **Sahneler:** Sahne sil, sahibi olmayan (eski) sahnelere yapımcı ata, kapağı olmayan sahnelere toplu kapak üret.
+- Dublaj sayfasında yöneticiler her yorumu ve dublajı silebilir.
+
+> **Otomatik temizlik (opsiyonel):** Supabase'de Database → Extensions → `pg_cron`'u açıp `005_creator_liderlik_yonetim.sql` dosyasını tekrar çalıştırırsan eski odalar her gece kendiliğinden silinir.
 
 ## 💬 Discord bildirimi (opsiyonel)
 
-Her yeni dublaj Discord kanalınıza düşer. Kendi sunucun gerekmez; mesajı Supabase gönderir.
+Her yeni dublaj Discord kanalınıza düşer (sahne karesi, seslendirenler ve sahneyi ekleyenle). Kendi sunucun gerekmez; mesajı Supabase gönderir. Adımlar 2'den sonrası artık **Yönetim paneli → Ayarlar**'dan da yapılabilir.
 
 1. **Discord:** Kanal ayarları → **Entegrasyonlar** → **Webhook'lar** → **Yeni Webhook** → **Webhook URL'sini kopyala**.
 2. **Supabase:** Database → **Extensions** → `pg_net`'i aç (migration açmayı dener; kapalıysa buradan aç).
@@ -217,11 +239,14 @@ Webhook adresi `app_settings` tablosunda durur; bu tablo tarayıcıdan okunamaz,
 ```
 fam-io/
 ├── app/
-│   ├── page.tsx                 # Ana sayfa: oda kur / katıl, son dublajlar
+│   ├── page.tsx                 # Ana sayfa: oda kur / katıl, son dublajlar, haftanın liderleri
+│   ├── opengraph-image.tsx      # Sitenin paylaşım görseli
 │   ├── hesap/                   # Giriş yap / profil oluştur
-│   ├── u/[username]/            # Profil: level, seri, dublajlar, uyum
-│   ├── d/[id]/                  # Herkese açık dublaj sayfası (beğeni, yorum, indir)
-│   ├── sahneler/                # Sahne kütüphanesi ve editör
+│   ├── u/[username]/            # Profil: level, seri, rozetler, dublajlar, eklediği sahneler, uyum
+│   ├── d/[id]/                  # Herkese açık dublaj sayfası + dinamik paylaşım görseli
+│   ├── sahneler/                # Sahne kütüphanesi (arama, etiket, trend) ve editör
+│   ├── liderlik/                # Haftalık / tüm zamanlar / yapımcılar
+│   ├── yonetim/                 # Yönetim paneli (Kurucu rozeti)
 │   ├── oda/[code]/page.tsx      # Oda: lobi → kayıt → final
 │   ├── giris/ + api/giris/      # Opsiyonel site şifresi
 │   └── globals.css
@@ -232,6 +257,10 @@ fam-io/
 │   ├── DubCard.tsx              # Dublaj kartı (akış ve profil)
 │   ├── VotePanel.tsx            # Final oylaması
 │   ├── BadgeIcon.tsx            # Rozet çizimleri
+│   ├── SceneBits.tsx            # "Oluşturan" etiketi, sahne kapağı
+│   ├── MicWave.tsx              # Canlı mikrofon dalgası
+│   ├── RewardToaster.tsx        # XP / rozet / level kutlamaları
+│   ├── Onboarding.tsx           # İlk giriş rehberi + tek başına prova
 │   ├── landing/DubbingMachine3D.tsx  # Ana sayfadaki 3D makine
 │   └── room/
 │       ├── useRoom.ts           # Oda durumu + Supabase Realtime
@@ -247,6 +276,9 @@ fam-io/
 │   ├── effects.ts               # Ses efektleri (perde kaydırma, filtreler, yankı)
 │   ├── badges.ts                # Rozet kataloğu
 │   ├── compress.ts              # Yüklemeden önce 720p sıkıştırma
+│   ├── image.ts                 # Profil fotoğrafı ve kapak karesi (tarayıcıda)
+│   ├── admin.ts                 # Yönetici kontrolü
+│   ├── og/shared.tsx            # Paylaşım görseli yardımcıları
 │   └── types.ts
 ├── supabase/schema.sql          # Tablolar, RLS, RPC fonksiyonları, storage
 ├── supabase/migrations/         # Mevcut kurulumlar için güncellemeler

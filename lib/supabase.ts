@@ -36,9 +36,15 @@ export async function ensureUser(): Promise<User> {
   throw new Error("Devam etmek için giriş yapman gerekiyor.");
 }
 
-export function publicUrl(bucket: "scenes" | "recordings", path: string) {
-  return sb().storage.from(bucket).getPublicUrl(path).data.publicUrl;
+export type Bucket = "scenes" | "recordings" | "avatars";
+
+/** Herkese açık dosya adresi (istemci gerektirmez; sunucuda da çalışır) */
+export function publicUrl(bucket: Bucket, path: string) {
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+  return `${base}/storage/v1/object/public/${bucket}/${path.split("/").map(encodeURIComponent).join("/")}`;
 }
+
+export const avatarUrl = (path?: string | null) => (path ? publicUrl("avatars", path) : null);
 
 /** Supabase sunucu saatiyle yerel saat arasındaki fark (ms). serverNow ≈ Date.now() + offset */
 let offsetPromise: Promise<number> | null = null;
@@ -63,6 +69,8 @@ export function serverOffset(): Promise<number> {
 
 const MIGRATION_HINT: [RegExp, string][] = [
   [/claim_role|release_role|column .*picked/i, "002_karakter_secimi.sql"],
+  [/'scenes' and 'profiles'|list_scenes|popular_tags|leaderboard|creator_|kick_player|set_room_lock|transfer_host|is_admin|admin_|storage_orphans|avatar_path|thumb_path|tags|locked|banned/i, "005_creator_liderlik_yonetim.sql"],
+  [/set_recording_effect|cast_vote|badge_stats|dub_votes|user_badges|effect/i, "004_efekt_oylama_rozet_discord.sql"],
   [/profiles|dub_|username_available|compat_for|current_dub_id/i, "003_profiller_ve_sosyal.sql"],
 ];
 

@@ -103,9 +103,26 @@ Prompt yapısı: **Ortak stil + Seviye çerçevesi + Motif**
 |---|---|---|---|
 | `dil_cambazi` | Dil Cambazı | Gümüş | `a tongue-twister: a swirling ribbon of sound waves forming a knot` |
 | `ses_bukucu` | Ses Bükücü | Gümüş | `a magic wand bending a sound wave into a spiral` |
-| `yonetmen` | Yönetmen | Bronz | `a director's chair with a small megaphone` |
-| `studyo_sahibi` | Stüdyo Sahibi | Altın | `a tiny recording studio building with a glowing red "on air" lamp` |
 | `usta` | Usta | Altın | `a trophy cup with a microphone engraved on it` |
+
+### Yapımcı (sahne ekleyenler)
+
+| id | Ad | Seviye | Motif |
+|---|---|---|---|
+| `yonetmen` | Yönetmen | Bronz | `a director's chair with a small megaphone` |
+| `ilk_gosterim` | İlk Gösterim | Bronz | `a single cinema ticket stub with a tiny star punched in it` |
+| `yapimci` | Yapımcı | Gümüş | `a clapperboard snapping shut with a small spark` |
+| `gise_rekoru` | Gişe Rekoru | Gümüş | `an overflowing popcorn bucket with a rising arrow made of popcorn` |
+| `alkis_tufani` | Alkış Tufanı | Gümüş | `two clapping hands bursting with confetti` |
+| `kult_klasik` | Kült Klasik | Altın | `a vintage film reel with a laurel wreath around it` |
+| `studyo_sahibi` | Stüdyo Sahibi | Altın | `a tiny recording studio building with a glowing red "on air" lamp` |
+
+### Liderlik
+
+| id | Ad | Seviye | Motif |
+|---|---|---|---|
+| `haftanin_sesi` | Haftanın Sesi | Altın | `a medal on a ribbon with a microphone in the center and a small "7-day" calendar ring around it (no numbers, just seven dots)` |
+| `hanedan` | Hanedan | Altın | `a small castle tower topped with a crown and a microphone-shaped flag` |
 
 ---
 

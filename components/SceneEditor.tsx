@@ -1,11 +1,12 @@
 "use client";
 
-import { Circle, Music, Pause, Play, Plus, Save, Trash2, Upload, X } from "lucide-react";
+import { Circle, ImageIcon, Music, Pause, Play, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { btn, Button, cx, IconButton, Notice, PageHeader, Progress, Spinner, Swatch } from "@/components/ui";
 import { ensureUser, errMsg, publicUrl, sb } from "@/lib/supabase";
 import { compressionSupported, compressVideo, fmtMB } from "@/lib/compress";
+import { videoThumbnail } from "@/lib/image";
 import { fmtTime, MAX_ROLES, ROLE_COLORS, sortLines, type SceneFull, type SceneLine, type SceneRole } from "@/lib/types";
 
 type EdRole = Pick<SceneRole, "id" | "name" | "color" | "sort">;
@@ -13,6 +14,9 @@ type EdLine = Pick<SceneLine, "id" | "role_id" | "start_time" | "end_time" | "te
 
 const MAX_VIDEO_MB = 50; // Supabase ücretsiz planda dosya başına üst sınır
 const MAX_INPUT_MB = 1024; // sıkıştırılacak ham dosya için makul üst sınır
+const MAX_TAGS = 5;
+export const TAG_SUGGESTIONS = ["anime", "film", "dizi", "çizgi film", "oyun", "komedi", "dram", "aksiyon", "korku", "reklam", "meme", "müzikal"];
+const normTag = (t: string) => t.trim().replace(/^#/, "").replace(/\s+/g, " ").toLocaleLowerCase("tr").slice(0, 24);
 
 function extOf(f: File) {
   const m = f.name.match(/\.([a-z0-9]+)$/i);
@@ -31,6 +35,11 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
   const [bgPath, setBgPath] = useState<string | null>(initial?.bg_audio_path ?? null);
   const [origVol, setOrigVol] = useState(initial?.original_volume ?? 0);
   const [duration, setDuration] = useState(initial?.duration ?? 0);
+  const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
+  const [tagDraft, setTagDraft] = useState("");
+  const [thumbPath, setThumbPath] = useState<string | null>(initial?.thumb_path ?? null);
+  const [thumbAt, setThumbAt] = useState<number | null>(null); // null: otomatik kare
+  const [videoChanged, setVideoChanged] = useState(false);
 
   const [roles, setRoles] = useState<EdRole[]>(
     initial ? [...initial.scene_roles].sort((a, b) => a.sort - b.sort) : [],
@@ -118,6 +127,8 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
       if (kind === "video") {
         setVideoPath(path);
         setVideoSrc(URL.createObjectURL(file));
+        setVideoChanged(true);
+        setThumbAt(null);
       } else {
         setBgPath(path);
       }
@@ -248,8 +259,9 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
 
     setSaving(true);
     try {
-      await ensureUser();
+      const u = await ensureUser();
       const db = sb();
+      const thumb = await ensureThumb(u.id);
       const { error: e1 } = await db.from("scenes").upsert({
         id: sceneId,
         title: title.trim(),
@@ -258,6 +270,8 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
         bg_audio_path: bgPath,
         original_volume: origVol,
         duration: duration || null,
+        tags,
+        thumb_path: thumb,
       });
       if (e1) throw e1;
 
@@ -298,11 +312,36 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
     }
   }
 
+  /** Kapak karesi yoksa / video değiştiyse / elle kare seçildiyse üret ve yükle. Başarısız olursa kaydı engellemez. */
+  async function ensureThumb(uid: string): Promise<string | null> {
+    if (thumbPath && !videoChanged && thumbAt === null) return thumbPath;
+    try {
+      const { blob, ext } = await videoThumbnail(videoSrc, thumbAt ?? undefined);
+      const path = `${uid}/${sceneId}-thumb-${Date.now()}.${ext}`;
+      const { error } = await sb().storage.from("scenes").upload(path, blob, { contentType: blob.type, cacheControl: "31536000" });
+      if (error) throw error;
+      if (thumbPath) sb().storage.from("scenes").remove([thumbPath]).catch(() => {});
+      setThumbPath(path);
+      setVideoChanged(false);
+      setThumbAt(null);
+      return path;
+    } catch {
+      return thumbPath;
+    }
+  }
+
+  function addTag(raw: string) {
+    const parts = raw.split(",").map(normTag).filter(Boolean);
+    if (!parts.length) return;
+    setTags((cur) => [...cur, ...parts.filter((p) => !cur.includes(p))].slice(0, MAX_TAGS));
+    setTagDraft("");
+  }
+
   async function removeScene() {
     if (!confirm("Sahne ve bu sahneyle kurulmuş tüm odalar silinecek. Emin misin?")) return;
     const { error } = await sb().from("scenes").delete().eq("id", sceneId);
     if (error) return setError(errMsg(error));
-    const paths = [videoPath, bgPath].filter(Boolean) as string[];
+    const paths = [videoPath, bgPath, thumbPath].filter(Boolean) as string[];
     if (paths.length) await sb().storage.from("scenes").remove(paths);
     router.push("/sahneler");
   }
@@ -609,6 +648,80 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+            <div>
+              <label className="eyebrow mb-1.5 flex justify-between" htmlFor="tag">
+                <span>Etiketler</span>
+                <span className="normal-case">
+                  {tags.length}/{MAX_TAGS}
+                </span>
+              </label>
+              <div className="field flex h-auto min-h-10 flex-wrap items-center gap-1.5 py-1.5">
+                {tags.map((t) => (
+                  <span key={t} className="inline-flex h-6 items-center gap-1 rounded-md bg-surface-3 pr-1 pl-2 text-xs">
+                    #{t}
+                    <button type="button" className="rounded p-0.5 text-muted hover:text-fg" aria-label={`${t} etiketini kaldır`} onClick={() => setTags(tags.filter((x) => x !== t))}>
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                ))}
+                {tags.length < MAX_TAGS && (
+                  <input
+                    id="tag"
+                    className="h-6 min-w-24 flex-1 bg-transparent text-sm outline-none placeholder:text-muted"
+                    placeholder={tags.length ? "" : "anime, komedi…"}
+                    value={tagDraft}
+                    maxLength={40}
+                    onChange={(e) => (e.target.value.includes(",") ? addTag(e.target.value) : setTagDraft(e.target.value))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addTag(tagDraft);
+                      } else if (e.key === "Backspace" && !tagDraft && tags.length) setTags(tags.slice(0, -1));
+                    }}
+                    onBlur={() => tagDraft && addTag(tagDraft)}
+                  />
+                )}
+              </div>
+              {tags.length < MAX_TAGS && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {TAG_SUGGESTIONS.filter((t) => !tags.includes(t))
+                    .slice(0, 8)
+                    .map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => addTag(t)}
+                        className="h-6 rounded-full border border-line px-2 text-[11px] text-muted transition-colors hover:border-line-strong hover:text-fg"
+                      >
+                        + {t}
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+            {videoSrc && (
+              <div className="flex items-center gap-3 rounded-lg border border-line bg-bg p-2">
+                <div className="relative aspect-video w-24 shrink-0 overflow-hidden rounded bg-black">
+                  {thumbPath && thumbAt === null && !videoChanged ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={publicUrl("scenes", thumbPath)} alt="Kapak" className="size-full object-cover" />
+                  ) : (
+                    <span className="flex size-full items-center justify-center text-muted">
+                      <ImageIcon className="size-4" />
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium">Kapak</p>
+                  <p className="text-[11px] leading-snug text-muted">
+                    {thumbAt !== null ? `${fmtTime(thumbAt)} karesi kaydedilince kapak olur` : thumbPath && !videoChanged ? "Kart ve paylaşım görselinde görünür" : "Kaydedince otomatik oluşturulur"}
+                  </p>
+                </div>
+                <Button size="sm" variant="ghost" type="button" onClick={() => setThumbAt(videoRef.current?.currentTime ?? 0)} title="Videoda şu anki kareyi kapak yap">
+                  Bu kare
+                </Button>
+              </div>
+            )}
             {videoSrc && (
               <label className={btn("secondary", "sm", "cursor-pointer")}>
                 {uploading === "video" || compress ? <Spinner /> : <Upload className="size-3.5" />}

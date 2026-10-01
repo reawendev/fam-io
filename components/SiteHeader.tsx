@@ -1,16 +1,19 @@
 "use client";
 
-import { Flame, LogOut, UserRound } from "lucide-react";
+import { CircleHelp, Flame, LogOut, Shield, Trophy, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { signOut, useMe } from "@/lib/auth";
+import { useIsAdmin } from "@/lib/admin";
+import { openOnboarding } from "./Onboarding";
 import { currentStreak, levelInfo, streakDoneToday } from "@/lib/progress";
 import { Avatar, btn, cx, Logo } from "./ui";
 
 const NAV = [
   { href: "/sahneler", label: "Sahneler" },
-  { href: "/sahneler/yeni", label: "Sahne yükle" },
+  { href: "/liderlik", label: "Liderlik" },
+  { href: "/sahneler/yeni", label: "Sahne ekle" },
 ];
 
 export default function SiteHeader() {
@@ -19,6 +22,7 @@ export default function SiteHeader() {
   const me = useMe();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const admin = useIsAdmin();
 
   useEffect(() => {
     if (!open) return;
@@ -63,7 +67,7 @@ export default function SiteHeader() {
                   aria-expanded={open}
                   aria-haspopup="menu"
                 >
-                  <Avatar name={me.profile.display_name} color={me.profile.color} size={24} />
+                  <Avatar name={me.profile.display_name} color={me.profile.color} path={me.profile.avatar_path} size={24} />
                   <span className="hidden max-w-32 truncate sm:inline">{me.profile.display_name}</span>
                   <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-fg-2">Lv {levelInfo(me.profile.xp).level}</span>
                 </button>
@@ -72,6 +76,25 @@ export default function SiteHeader() {
                     <Link role="menuitem" href={`/u/${me.profile.username}`} className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2">
                       <UserRound className="size-4 text-muted" /> Profilim
                     </Link>
+                    <Link role="menuitem" href="/liderlik" className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2 sm:hidden">
+                      <Trophy className="size-4 text-muted" /> Liderlik
+                    </Link>
+                    {admin && (
+                      <Link role="menuitem" href="/yonetim" className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2">
+                        <Shield className="size-4 text-muted" /> Yönetim
+                      </Link>
+                    )}
+                    <button
+                      role="menuitem"
+                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-surface-2"
+                      onClick={() => {
+                        setOpen(false);
+                        openOnboarding();
+                      }}
+                    >
+                      <CircleHelp className="size-4 text-muted" /> Nasıl oynanır?
+                    </button>
+                    <div className="my-1 h-px bg-line" />
                     <button
                       role="menuitem"
                       className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-surface-2"

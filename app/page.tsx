@@ -1,12 +1,12 @@
 "use client";
 
-import { ArrowRight, Download, Flame, Mic, Timer, Users } from "lucide-react";
+import { ArrowRight, Clapperboard, Crown, Download, Flame, Mic, Timer, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Avatar, Button, ButtonLink, cx, Notice, Progress } from "@/components/ui";
-import DubCard, { DUB_CARD_SELECT, type DubCardData } from "@/components/DubCard";
+import { Avatar, Button, ButtonLink, cx, EmptyState, Notice, Progress, Skeleton } from "@/components/ui";
+import DubCard, { DUB_CARD_SELECT, DubCardSkeleton, type DubCardData } from "@/components/DubCard";
 import type { StationId } from "@/components/landing/DubbingMachine3D";
 import { ensureUser, errMsg, sb } from "@/lib/supabase";
 import { useMe } from "@/lib/auth";
@@ -26,6 +26,7 @@ export default function Home() {
   const router = useRouter();
   const me = useMe();
   const [feed, setFeed] = useState<DubCardData[] | null>(null);
+  const [leaders, setLeaders] = useState<Leader[] | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +40,9 @@ export default function Home() {
       .order("created_at", { ascending: false })
       .limit(6)
       .then(({ data }) => setFeed((data as unknown as DubCardData[]) ?? []));
+    sb()
+      .rpc("leaderboard", { p_period: "week", p_limit: 5 })
+      .then(({ data }) => setLeaders((data as Leader[]) ?? []));
   }, []);
 
   async function join(e: React.FormEvent) {
@@ -140,21 +144,85 @@ export default function Home() {
         )}
       </section>
 
-      {feed && feed.length > 0 && (
-        <section className="mx-auto max-w-6xl px-4 pt-16 sm:px-6">
+      <section className="mx-auto grid max-w-6xl gap-8 px-4 pt-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="eyebrow">Akış</p>
               <h2 className="mt-2 text-xl font-semibold tracking-tight">Son dublajlar</h2>
             </div>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {feed.map((d) => (
-              <DubCard key={d.id} dub={d} />
-            ))}
+          {feed === null ? (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {Array.from({ length: 4 }, (_, i) => (
+                <DubCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : feed.length === 0 ? (
+            <EmptyState
+              className="mt-6"
+              icon={<Clapperboard className="size-5" />}
+              title="Henüz dublaj yok"
+              action={
+                <ButtonLink href="/sahneler" size="sm" variant="primary">
+                  İlk sahneyi sen seslendir
+                </ButtonLink>
+              }
+            >
+              Tamamlanan her sahne burada görünür. Bir oda kur, arkadaşlarını çağır.
+            </EmptyState>
+          ) : (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {feed.map((d) => (
+                <DubCard key={d.id} dub={d} />
+              ))}
+            </div>
+          )}
+        </div>
+        <aside>
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="eyebrow">Bu hafta</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight">Liderler</h2>
+            </div>
+            <Link href="/liderlik" className="text-xs text-muted hover:text-fg">
+              Tümü →
+            </Link>
           </div>
-        </section>
-      )}
+          <div className="panel mt-6">
+            {leaders === null ? (
+              <div className="flex flex-col gap-3 p-4">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="size-7 rounded-full" />
+                    <Skeleton className="h-3.5 flex-1" />
+                  </div>
+                ))}
+              </div>
+            ) : leaders.length === 0 ? (
+              <p className="flex items-start gap-2 p-4 text-sm text-muted">
+                <Trophy className="mt-0.5 size-4 shrink-0" /> Bu hafta henüz kimse puan almadı. Bir sahne tamamla, ilk sıraya yerleş.
+              </p>
+            ) : (
+              <ol className="flex flex-col p-1.5">
+                {leaders.map((l, i) => (
+                  <li key={l.user_id}>
+                    <Link href={`/u/${l.username}`} className="flex items-center gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-surface-2">
+                      <span className={cx("w-4 text-center font-mono text-xs", i === 0 ? "text-accent" : "text-muted")}>
+                        {i === 0 ? <Crown className="size-3.5" /> : i + 1}
+                      </span>
+                      <Avatar name={l.display_name} color={l.color} path={l.avatar_path} size={28} />
+                      <span className="min-w-0 flex-1 truncate text-sm">{l.display_name}</span>
+                      <span className="font-mono text-xs text-fg-2">{l.xp} XP</span>
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+            )}
+            <p className="border-t border-line px-4 py-2.5 text-[11px] text-muted">Haftayı birinci bitiren &quot;Haftanın Sesi&quot; rozetini alır.</p>
+          </div>
+        </aside>
+      </section>
 
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -198,7 +266,7 @@ function MeStrip() {
   const safe = streakDoneToday(p);
   return (
     <Link href={`/u/${p.username}`} className="-m-1 mb-3 flex items-center gap-3 rounded-lg p-1 transition-colors hover:bg-surface-2">
-      <Avatar name={p.display_name} color={p.color} size={40} />
+      <Avatar name={p.display_name} color={p.color} path={p.avatar_path} size={40} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-sm font-medium">{p.display_name}</p>
@@ -215,6 +283,8 @@ function MeStrip() {
     </Link>
   );
 }
+
+type Leader = { user_id: string; username: string; display_name: string; color: string; avatar_path: string | null; xp: number };
 
 /** lg kırılımı (1024px) üstü mü? İlk render'da null (SSR ile uyum için). */
 function useWide() {

@@ -8,6 +8,9 @@ export type Scene = {
   duration: number | null;
   created_by: string | null;
   created_at: string;
+  tags?: string[];
+  thumb_path?: string | null;
+  dub_count?: number;
 };
 
 export type SceneRole = {
@@ -27,7 +30,10 @@ export type SceneLine = {
   text: string | null;
 };
 
-export type SceneFull = Scene & { scene_roles: SceneRole[]; scene_lines: SceneLine[] };
+export type SceneFull = Scene & { scene_roles: SceneRole[]; scene_lines: SceneLine[]; creator?: ProfileLite | null };
+
+/** Sahne + yapımcı select'i (005 gerekir) */
+export const SCENE_FULL_SELECT = "*, scene_roles(*), scene_lines(*), creator:profiles(username, display_name, color, avatar_path)";
 
 export type RoomStatus = "lobby" | "recording" | "finale";
 
@@ -39,6 +45,8 @@ export type Room = {
   status: RoomStatus;
   finale_at: string | null;
   current_dub_id?: string | null;
+  locked?: boolean;
+  banned?: string[];
   created_at: string;
 };
 
@@ -48,6 +56,10 @@ export type RoomPlayer = {
   nickname: string;
   done: boolean;
   joined_at: string;
+  /** useRoom profilden ekler */
+  color?: string;
+  avatar_path?: string | null;
+  username?: string;
 };
 
 export type RoomRole = { room_id: string; role_id: string; user_id: string; picked: boolean };
@@ -86,10 +98,33 @@ export type Profile = {
   streak: number;
   best_streak: number;
   last_streak_day: string | null;
+  avatar_path: string | null;
   created_at: string;
 };
 
-export type ProfileLite = Pick<Profile, "username" | "display_name" | "color">;
+export type ProfileLite = Pick<Profile, "username" | "display_name" | "color"> & { avatar_path?: string | null };
+
+/** PostgREST select'lerinde profil alanları */
+export const PROFILE_LITE = "username, display_name, color, avatar_path";
+
+/** list_scenes() satırı */
+export type SceneListItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  video_path: string;
+  thumb_path: string | null;
+  duration: number | null;
+  tags: string[];
+  created_by: string | null;
+  created_at: string;
+  dub_count: number;
+  week_dubs: number;
+  role_count: number;
+  line_count: number;
+  roles: { id: string; name: string; color: string }[];
+  creator: ProfileLite | null;
+};
 
 export type Dub = {
   id: string;

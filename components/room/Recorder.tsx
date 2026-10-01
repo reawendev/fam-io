@@ -8,10 +8,12 @@ import { DubPlayer, LINE_TAIL, playOriginal, recItem, unlockAudio } from "@/lib/
 import { fmtTime, sortLines, type Recording, type SceneLine } from "@/lib/types";
 import { EFFECTS, isEffect, type EffectId } from "@/lib/effects";
 import type { RoomProps } from "./Lobby";
+import MicWave from "@/components/MicWave";
 
 const PREROLL = 3; // replikten önce 3-2-1 geri sayım (bu sırada çıkan sesler finale girmez)
 
-type MyRec = { url: string; offset: number; effect: EffectId };
+type MyRec = { url: string; offset: number; effect: EffectId; path?: string };
+const SILENT_PEAK = 0.03; // kayıt boyunca bundan yüksek ses yoksa uyar
 type Mode =
   | { kind: "idle" }
   | { kind: "arming"; line: SceneLine }
@@ -59,7 +61,10 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
   };
   const [t, setT] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [warn, setWarn] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const peakRef = useRef(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -85,7 +90,7 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
       .then(({ data }) => {
         const m: Record<string, MyRec> = {};
         for (const r of (data as Recording[]) ?? [])
-          m[r.line_id] = { url: publicUrl("recordings", r.audio_path), offset: r.offset_time, effect: isEffect(r.effect) ? r.effect : "dogal" };
+          m[r.line_id] = { url: publicUrl("recordings", r.audio_path), offset: r.offset_time, effect: isEffect(r.effect) ? r.effect : "dogal", path: r.audio_path };
         setRecs(m);
       });
   }, [room.id, me]);
@@ -115,7 +120,10 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
         if (!recsRef.current[line.id] && fx !== "dogal") {
           await sb().rpc("set_recording_effect", { p_room: room.id, p_line: line.id, p_effect: fx });
         }
-        const next = { ...recsRef.current, [line.id]: { url: URL.createObjectURL(blob), offset, effect: fx } };
+        // Tekrar çekimde eski dosyayı sil (depolama dolmasın)
+        const old = recsRef.current[line.id]?.path;
+        if (old && old !== path) sb().storage.from("recordings").remove([old]).catch(() => {});
+        const next = { ...recsRef.current, [line.id]: { url: URL.createObjectURL(blob), offset, effect: fx, path } };
         setRecs(next);
         const ml = myLinesRef.current;
         const nextLine = ml.find((l) => !next[l.id] && l.start_time > line.start_time) ?? ml.find((l) => !next[l.id]);
@@ -152,6 +160,7 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
     if (streamRef.current?.getAudioTracks().some((tr) => tr.readyState === "live")) return streamRef.current;
     const s = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     streamRef.current = s;
+    setStream(s);
     return s;
   }
 
@@ -182,6 +191,7 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
     const v = videoRef.current;
     if (!v) return;
     setError(null);
+    setWarn(null);
     stopAll();
     setMode({ kind: "arming", line });
     cancelRef.current = false;
@@ -194,10 +204,18 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
       const chunks: BlobPart[] = [];
       mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
       // Kayıt geri sayımla birlikte başlar (hizalama için); geri sayım kısmı oynatmada kırpılır.
-      mr.onstart = () => setMode({ kind: "rec", line, mr, offset: v.currentTime });
+      mr.onstart = () => {
+        peakRef.current = 0;
+        setMode({ kind: "rec", line, mr, offset: v.currentTime });
+      };
       mr.onstop = () => {
         const m = modeRef.current;
         if (cancelRef.current || m.kind !== "rec") return setMode({ kind: "idle" });
+        setWarn(
+          peakRef.current < SILENT_PEAK
+            ? "Bu kayıtta neredeyse hiç ses yok. Mikrofonun sessizde ya da yanlış cihaz seçili olabilir; dinleyip gerekirse tekrar çek."
+            : null,
+        );
         upload(new Blob(chunks, { type: mr.mimeType || mimeType || "audio/webm" }), line, m.offset, ext);
       };
       await v.play();
@@ -348,7 +366,23 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
               className="aspect-video w-full"
             />
             {curLine ? (
-              <RecOverlay line={curLine} t={t} recording={mode.kind === "rec"} color={roleById[curLine.role_id]?.color} />
+              <RecOverlay
+                line={curLine}
+                t={t}
+                recording={mode.kind === "rec"}
+                color={roleById[curLine.role_id]?.color}
+                wave={
+                  <MicWave
+                    stream={stream}
+                    active={mode.kind === "rec"}
+                    bars={28}
+                    className="h-5 w-24 sm:w-32"
+                    onLevel={(pk) => {
+                      if (pk > peakRef.current) peakRef.current = pk;
+                    }}
+                  />
+                }
+              />
             ) : (
               contextLines.length > 0 && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-4 flex flex-col items-center gap-1 px-4">
@@ -374,6 +408,7 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
         </div>
 
         {error && <Notice>{error}</Notice>}
+        {warn && !error && <Notice tone="warn">{warn}</Notice>}
 
         {myLines.length === 0 ? (
           <div className="panel px-6 py-10 text-center">
@@ -534,7 +569,7 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
               const hasRole = assignments.some((a) => a.user_id === p.user_id);
               return (
                 <li key={p.user_id} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm">
-                  <Avatar name={p.nickname} size={24} />
+                  <Avatar name={p.nickname} color={p.color} path={p.avatar_path} size={24} />
                   <span className="min-w-0 flex-1 truncate">
                     {p.nickname}
                     {p.user_id === me && <span className="text-muted"> (sen)</span>}
@@ -582,7 +617,19 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
   );
 }
 
-function RecOverlay({ line, t, recording, color }: { line: SceneLine; t: number; recording: boolean; color?: string }) {
+function RecOverlay({
+  line,
+  t,
+  recording,
+  color,
+  wave,
+}: {
+  line: SceneLine;
+  t: number;
+  recording: boolean;
+  color?: string;
+  wave?: React.ReactNode;
+}) {
   const until = line.start_time - t;
   const speaking = t >= line.start_time && t <= line.end_time;
   const progress = (t - line.start_time) / (line.end_time - line.start_time);
@@ -593,6 +640,7 @@ function RecOverlay({ line, t, recording, color }: { line: SceneLine; t: number;
         <span className="inline-flex items-center gap-1.5 rounded bg-black/75 px-2 py-1 font-mono text-[11px] font-medium tracking-wider">
           <span className={cx("size-2 rounded-full", recording ? "rec-dot bg-rec" : "bg-muted")} />
           {recording ? "KAYIT" : "HAZIRLANIYOR"}
+          {recording && wave && <span className="ml-1.5 border-l border-white/15 pl-2">{wave}</span>}
         </span>
         {speaking && <span className="rounded bg-rec px-2 py-1 text-xs font-semibold text-white">Şimdi konuş</span>}
       </div>

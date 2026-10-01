@@ -1,5 +1,35 @@
 # Değişiklik notları
 
+## 0.5.0 — 1 Ekim 2026
+
+### Yeni
+- **Profil fotoğrafı:** Profili düzenle → Fotoğraf seç. Tarayıcıda kare kırpılıp ~20 KB'a küçültülür; eskisi otomatik silinir. Fotoğraf her yerde görünür (başlık, lobi, kayıt, oylama, yorumlar, liderlik, kartlar).
+- **Yapımcı (creator) sistemi:** Sahneyi ekleyen kişi kütüphanede, lobide, finalin jeneriğinde, dublaj sayfasında, kartlarda, paylaşım görselinde ve Discord mesajında "Oluşturan: …" olarak görünür.
+  - Eklediğin sahne başkaları tarafından tamamlanınca **+15 XP**, o dublaj beğenilince **+2 XP**.
+  - Profilde "Eklediği sahneler" sekmesi: sahne, oynanma, beğeni ve yapımcı XP'si.
+  - Yeni rozetler: İlk Gösterim, Yapımcı, Gişe Rekoru, Alkış Tufanı, Kült Klasik (Yönetmen ve Stüdyo Sahibi bu gruba taşındı).
+- **Haftalık liderlik tablosu** (`/liderlik`): Bu hafta, geçen hafta, tüm zamanlar ve yapımcılar. Pazartesi 00:00'da (İstanbul) sıfırlanır. Haftayı birinci bitiren **Haftanın Sesi** rozetini alır; 5 kez birinci olan **Hanedan** olur. Ana sayfada haftanın ilk 5'i.
+- **Kütüphane:** Arama (başlık, açıklama, etiket), etiketler (en çok 5; öneriler var), karakter sayısı filtresi, Trend / Yeni / En çok oynanan sıralaması, oynanma sayıları. Sahnelerin kapak görseli var (kaydederken otomatik üretilir, editörde "Bu kare" ile seçilebilir).
+- **Oda yönetimi:** Oda sahibi oyuncu çıkarabilir (çıkarılan tekrar giremez), odayı kilitleyebilir, sahipliği devredebilir. Lobiden ayrılan oda sahibinin yerine en eski oyuncu geçer; boşalan oda silinir.
+- **Depolama temizliği:** Tekrar çekimde eski ses dosyası anında silinir. Yönetim panelinden kullanılmayan dosyalar ve 3 günlük hareketsiz odalar tek tıkla temizlenir; pg_cron açıksa eski odalar her gece otomatik silinir.
+- **Yönetim paneli** (`/yonetim`, Kurucu rozeti olanlar): depolama kullanımı, Discord webhook / site adresi / Erken Üye ayarı ve test mesajı, rozet verme-alma, sahne silme, sahipsiz sahnelere yapımcı atama, eksik kapakları toplu üretme. Dublaj sayfasında yöneticiler yorum ve dublaj silebilir.
+
+### Tasarım
+- **Paylaşım görseli:** Dublaj linki Discord/WhatsApp/X'te sahne karesi, seslendirenlerin fotoğrafları, beğeni sayısı ve yapımcıyla 1200×630 kart olarak açılır. Sitenin kendi paylaşım görseli de var. (Vercel'de ücretsiz, `next/og`.)
+- **Canlı ses dalgası:** Kayıt sırasında video üstünde mikrofon dalgası; kayıtta neredeyse hiç ses yoksa uyarı. Lobideki mikrofon testi de 8 saniyelik canlı dalga gösteriyor.
+- **Ödül animasyonları:** XP kazanınca bildirim ("sen yokken +25 XP" dahil), yeni rozet açılınca dönen madalyon, level atlayınca konfetili kutlama. Aynı anda çok rozet açılırsa en değerli 3'ü gösterilir, kalanı tek bildirimde toplanır.
+- **İlk giriş rehberi:** 3 adımlık tur; sonunda "Tek başına prova" ile kısa bir sahnede tüm karakterleri kendin seslendirip akışı görürsün. Menüden "Nasıl oynanır?" ile tekrar açılır.
+- **Kurucu plaketi:** Kurucu rozeti olan profillerde, fareyle eğilen ve hologram gibi parlayan altın bir plaket (`components/AwardPlaque.tsx`; başka özel rozetler için de kullanılabilir).
+- **Yükleniyor iskeletleri ve boş durumlar:** Kütüphane, akış, profil, liderlik, dublaj sayfası ve yönetim panelinde.
+- Kütüphane artık giriş yapmadan da gezilebilir (oda kurmak için giriş gerekir).
+
+### Veritabanı
+- Yeni: `xp_events` (her XP hareketi), `profiles.avatar_path`, `scenes.tags / thumb_path / dub_count`, `dubs.creator_xp`, `rooms.locked / banned`, `avatars` bucket'ı, `scenes.created_by → profiles` bağlantısı.
+- Yeni fonksiyonlar: `list_scenes`, `popular_tags`, `leaderboard`, `creator_board`, `creator_stats`, `kick_player`, `set_room_lock`, `transfer_host`, `is_admin`, `storage_orphans`, `admin_*`.
+- Güncellenen: `_finalize_dub`, `_on_like`, `cast_vote`, `badge_stats`, `join_room`, `leave_room`, `compat_for`, `_notify_discord`.
+- Depolama yetkileri: kullanıcılar kendi dosyalarını silebilir; yöneticiler kullanılmayan dosyaları silebilir.
+- **Mevcut kurulum için:** `supabase/migrations/005_creator_liderlik_yonetim.sql` dosyasını bir kez çalıştır.
+
 ## 0.4.0 — 1 Ekim 2026
 
 ### Yeni

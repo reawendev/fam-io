@@ -2,10 +2,12 @@
 
 import { Check, Download, Heart, Link2, MessageCircle, Play, RotateCcw, Send, Share2, Square, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Avatar, Button, ButtonLink, cx, IconButton, Notice, Progress, Spinner } from "@/components/ui";
+import { Avatar, Button, ButtonLink, cx, IconButton, Notice, Progress, Skeleton, Spinner } from "@/components/ui";
+import { CreatorTag } from "@/components/SceneBits";
 import { useMe } from "@/lib/auth";
+import { useIsAdmin } from "@/lib/admin";
 import { downloadBlob, exportDub, exportSupported, slugify } from "@/lib/exporter";
 import { DubPlayer, recItem, unlockAudio, type DubItem } from "@/lib/player";
 import { timeAgo } from "@/lib/progress";
@@ -26,7 +28,7 @@ type Full = {
 };
 
 const SELECT =
-  "id, created_at, like_count, comment_count, scenes(*, scene_roles(*), scene_lines(*)), dub_cast(role_id, user_id, profiles(username, display_name, color)), dub_recordings(line_id, user_id, audio_path, offset_time, effect), dub_participants(user_id, lines, profiles(username, display_name, color))";
+  "id, created_at, like_count, comment_count, scenes(*, scene_roles(*), scene_lines(*), creator:profiles(username, display_name, color, avatar_path)), dub_cast(role_id, user_id, profiles(username, display_name, color, avatar_path)), dub_recordings(line_id, user_id, audio_path, offset_time, effect), dub_participants(user_id, lines, profiles(username, display_name, color, avatar_path))";
 
 type ExportState =
   | { kind: "idle" }
@@ -54,6 +56,9 @@ export default function DubView({ id }: { id: string }) {
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [remixing, setRemixing] = useState(false);
+  const admin = useIsAdmin();
+  const router = useRouter();
   const [exp, setExp] = useState<ExportState>({ kind: "idle" });
   const abortRef = useRef<AbortController | null>(null);
 
@@ -67,7 +72,7 @@ export default function DubView({ id }: { id: string }) {
   const loadComments = useCallback(async () => {
     const { data } = await sb()
       .from("dub_comments")
-      .select("*, profiles(username, display_name, color)")
+      .select("*, profiles(username, display_name, color, avatar_path)")
       .eq("dub_id", id)
       .order("created_at", { ascending: true });
     setComments((data as DubComment[]) ?? []);
@@ -144,6 +149,18 @@ export default function DubView({ id }: { id: string }) {
     setPlaying(false);
   }
 
+  async function remix() {
+    if (!scene) return;
+    setRemixing(true);
+    const { data, error } = await sb().rpc("create_room", { p_scene: scene.id, p_nickname: "" });
+    if (error) {
+      setError(errMsg(error));
+      setRemixing(false);
+      return;
+    }
+    router.push(`/oda/${data}`);
+  }
+
   async function toggleLike() {
     if (me.status !== "in") return;
     const next = !liked;
@@ -185,8 +202,10 @@ export default function DubView({ id }: { id: string }) {
     loadComments();
   }
 
-  async function removeComment(cid: string) {
-    const { error } = await sb().from("dub_comments").delete().eq("id", cid);
+  async function removeComment(cid: string, asAdmin = false) {
+    const { error } = asAdmin
+      ? await sb().rpc("admin_delete_comment", { p_comment: cid })
+      : await sb().from("dub_comments").delete().eq("id", cid);
     if (error) return setError(errMsg(error));
     setComments((cs) => cs.filter((c) => c.id !== cid));
   }
@@ -217,8 +236,17 @@ export default function DubView({ id }: { id: string }) {
 
   if (dub === undefined)
     return (
-      <main className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-20 text-sm text-muted sm:px-6">
-        <Spinner /> Dublaj yükleniyor
+      <main className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px]" aria-busy="true" aria-label="Dublaj yükleniyor">
+        <section className="flex flex-col gap-4">
+          <Skeleton className="aspect-video w-full rounded-[var(--radius-card)]" />
+          <Skeleton className="h-6 w-1/2" />
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-32 w-full rounded-[var(--radius-card)]" />
+        </section>
+        <aside className="flex flex-col gap-4">
+          <Skeleton className="h-48 w-full rounded-[var(--radius-card)]" />
+          <Skeleton className="h-40 w-full rounded-[var(--radius-card)]" />
+        </aside>
       </main>
     );
   if (dub === null || !scene)
@@ -295,6 +323,7 @@ export default function DubView({ id }: { id: string }) {
             <p className="mt-1 text-sm text-muted">
               {people.map((p) => p.profiles!.display_name).join(", ")} · {timeAgo(dub.created_at)}
             </p>
+            <CreatorTag creator={scene.creator} size="md" className="mt-2" />
           </div>
           <div className="flex flex-wrap gap-2">
             {me.status === "in" ? (
@@ -339,13 +368,18 @@ export default function DubView({ id }: { id: string }) {
             </h2>
             <span className="font-mono text-xs text-muted">{comments.length}</span>
           </div>
+          {comments.length === 0 && (
+            <p className="flex items-center gap-2 px-4 py-6 text-sm text-muted">
+              <MessageCircle className="size-4 shrink-0" /> Henüz yorum yok. İlk yorumu sen yaz.
+            </p>
+          )}
           {comments.length > 0 && (
             <ul className="divide-y divide-line">
               {comments.map((c) => (
                 <li key={c.id} className="group flex gap-3 px-4 py-3">
                   {c.profiles ? (
                     <Link href={`/u/${c.profiles.username}`}>
-                      <Avatar name={c.profiles.display_name} color={c.profiles.color} size={28} />
+                      <Avatar name={c.profiles.display_name} color={c.profiles.color} path={c.profiles.avatar_path} size={28} />
                     </Link>
                   ) : (
                     <Avatar name="?" size={28} />
@@ -361,8 +395,12 @@ export default function DubView({ id }: { id: string }) {
                     </p>
                     <p className="mt-0.5 text-sm break-words whitespace-pre-wrap text-fg-2">{c.body}</p>
                   </div>
-                  {me.status === "in" && me.user.id === c.user_id && (
-                    <IconButton label="Yorumu sil" className="size-7 opacity-0 group-hover:opacity-100 focus:opacity-100" onClick={() => removeComment(c.id)}>
+                  {me.status === "in" && (me.user.id === c.user_id || admin) && (
+                    <IconButton
+                      label={me.user.id === c.user_id ? "Yorumu sil" : "Yorumu sil (yönetici)"}
+                      className="size-7 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                      onClick={() => removeComment(c.id, me.user.id !== c.user_id)}
+                    >
                       <Trash2 className="size-3.5" />
                     </IconButton>
                   )}
@@ -372,7 +410,7 @@ export default function DubView({ id }: { id: string }) {
           )}
           {me.status === "in" ? (
             <form onSubmit={post} className="flex items-end gap-2 border-t border-line p-3">
-              <Avatar name={me.profile.display_name} color={me.profile.color} size={28} />
+              <Avatar name={me.profile.display_name} color={me.profile.color} path={me.profile.avatar_path} size={28} />
               <textarea
                 className="field min-h-10 flex-1 resize-none py-2"
                 rows={1}
@@ -412,7 +450,7 @@ export default function DubView({ id }: { id: string }) {
                 <li key={r.id}>
                   {c?.profiles ? (
                     <Link href={`/u/${c.profiles.username}`} className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface-2">
-                      <Avatar name={c.profiles.display_name} color={c.profiles.color} size={28} />
+                      <Avatar name={c.profiles.display_name} color={c.profiles.color} path={c.profiles.avatar_path} size={28} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm">{c.profiles.display_name}</span>
                         <span className="block text-xs" style={{ color: r.color }}>
@@ -432,11 +470,33 @@ export default function DubView({ id }: { id: string }) {
           </ul>
         </div>
         <VotePanel dubId={id} scene={scene} me={me.status === "in" ? me.user.id : null} />
+        {admin && (
+          <Button
+            size="sm"
+            variant="danger"
+            icon={<Trash2 className="size-3.5" />}
+            onClick={async () => {
+              if (!confirm("Bu dublaj, yorumları ve oyları kalıcı olarak silinsin mi?")) return;
+              const { error } = await sb().rpc("admin_delete_dub", { p_dub: id });
+              if (error) setError(errMsg(error));
+              else router.push("/");
+            }}
+          >
+            Dublajı sil (yönetici)
+          </Button>
+        )}
         <div className="panel flex flex-col gap-2 p-4 text-sm">
-          <p className="text-muted">Bu sahneyi sen de seslendir.</p>
-          <ButtonLink href="/sahneler" variant="primary" size="sm" icon={<Link2 className="size-3.5" />}>
-            Oda kur
-          </ButtonLink>
+          <p className="font-medium">Bu sahneyi sen de seslendir</p>
+          <p className="text-xs text-muted">Aynı sahneyle yeni bir oda kurulur; arkadaşlarını çağır, kendi versiyonunuzu yapın.</p>
+          {me.status === "in" ? (
+            <Button variant="primary" size="sm" className="mt-1" loading={remixing} icon={<Link2 className="size-3.5" />} onClick={remix}>
+              Bu sahneyle oda kur
+            </Button>
+          ) : (
+            <ButtonLink href={loginHref} variant="primary" size="sm" className="mt-1">
+              Giriş yap ve oda kur
+            </ButtonLink>
+          )}
         </div>
       </aside>
     </main>

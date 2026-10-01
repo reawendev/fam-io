@@ -2,7 +2,8 @@
 
 import { LoaderCircle } from "lucide-react";
 import Link from "next/link";
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { avatarUrl } from "@/lib/supabase";
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
@@ -114,18 +115,118 @@ export function RoleTag({ name, color, className }: { name: string; color: strin
 }
 
 const AVATAR_TONES = ["#f97316", "#38bdf8", "#a3e635", "#f472b6", "#c084fc", "#facc15", "#2dd4bf", "#fb7185"];
-export function Avatar({ name, size = 28, color }: { name: string; size?: number; color?: string }) {
+/**
+ * Profil fotoğrafı; yoksa (ya da yüklenemezse) baş harf. `path` avatars bucket'ındaki yol,
+ * `src` doğrudan adres (ör. yükleme önizlemesi).
+ */
+export function Avatar({
+  name,
+  size = 28,
+  color,
+  path,
+  src,
+  className,
+}: {
+  name: string;
+  size?: number;
+  color?: string;
+  path?: string | null;
+  src?: string | null;
+  className?: string;
+}) {
+  const [broken, setBroken] = useState<string | null>(null);
   let h = 0;
   for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const tone = color ?? AVATAR_TONES[h % AVATAR_TONES.length];
+  const url = src ?? avatarUrl(path);
+  if (url && broken !== url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt=""
+        width={size}
+        height={size}
+        loading="lazy"
+        decoding="async"
+        onError={() => setBroken(url)}
+        className={cx("shrink-0 rounded-full bg-surface-3 object-cover", className)}
+        style={{ width: size, height: size }}
+        aria-hidden
+      />
+    );
+  }
   return (
     <span
-      className="inline-flex shrink-0 items-center justify-center rounded-full font-semibold"
+      className={cx("inline-flex shrink-0 items-center justify-center rounded-full font-semibold", className)}
       style={{ width: size, height: size, fontSize: size * 0.42, background: tone + "22", color: tone }}
       aria-hidden
     >
       {name.slice(0, 1).toLocaleUpperCase("tr")}
     </span>
+  );
+}
+
+/** Yüklenirken içerik iskeleti */
+export function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return <div className={cx("skeleton rounded-md", className)} style={style} aria-hidden />;
+}
+
+/** Boş durum: ikon + başlık + açıklama + isteğe bağlı aksiyon */
+export function EmptyState({
+  icon,
+  title,
+  children,
+  action,
+  className,
+}: {
+  icon: ReactNode;
+  title: ReactNode;
+  children?: ReactNode;
+  action?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cx("panel flex flex-col items-center gap-3 px-6 py-14 text-center", className)}>
+      <span className="empty-icon relative flex size-12 items-center justify-center rounded-xl border border-line bg-surface-2 text-muted">{icon}</span>
+      <div>
+        <p className="font-medium">{title}</p>
+        {children && <p className="mx-auto mt-1 max-w-sm text-sm text-muted">{children}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+/** Ortalanmış diyalog; Esc ve dış tıklama kapatır */
+export function Modal({
+  onClose,
+  children,
+  className,
+  label,
+}: {
+  onClose: () => void;
+  children: ReactNode;
+  className?: string;
+  label?: string;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-4 sm:items-center" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        className={cx("panel pop-in w-full max-w-md shadow-2xl shadow-black/50", className)}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
   );
 }
 

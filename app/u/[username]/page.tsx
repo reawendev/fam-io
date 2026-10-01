@@ -1,20 +1,24 @@
 "use client";
 
-import { Clapperboard, Flame, Heart, Mic, Pencil, Sparkles, Trophy, X } from "lucide-react";
+import { Camera, Clapperboard, Flame, Heart, Mic, Pencil, Play, Sparkles, Trash2, Trophy, Video, X } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import DubCard, { DUB_CARD_SELECT, type DubCardData } from "@/components/DubCard";
-import { Avatar, Button, ButtonLink, cx, IconButton, Notice, PROFILE_COLORS, Progress, Spinner } from "@/components/ui";
+import DubCard, { DUB_CARD_SELECT, DubCardSkeleton, type DubCardData } from "@/components/DubCard";
+import { SceneThumb } from "@/components/SceneBits";
+import { Avatar, Button, ButtonLink, cx, EmptyState, IconButton, Notice, PROFILE_COLORS, Progress, Skeleton } from "@/components/ui";
+import { squareAvatar } from "@/lib/image";
 import { refreshMe, useMe } from "@/lib/auth";
 import { compatLabel, compatPercent, currentStreak, levelInfo, levelTitle, streakDoneToday } from "@/lib/progress";
-import { errMsg, sb } from "@/lib/supabase";
-import type { Profile } from "@/lib/types";
+import { ensureUser, errMsg, sb } from "@/lib/supabase";
+import type { Profile, SceneListItem } from "@/lib/types";
 import BadgeIcon from "@/components/BadgeIcon";
+import AwardPlaque from "@/components/AwardPlaque";
 import { computeBadges, featuredBadges, TIER_LABEL, type BadgeState, type BadgeStats } from "@/lib/badges";
 
-type Compat = { partner: string; username: string; display_name: string; color: string; shared_dubs: number; shared_likes: number; score: number };
+type Compat = { partner: string; username: string; display_name: string; color: string; avatar_path?: string | null; shared_dubs: number; shared_likes: number; score: number };
 type Row = { lines: number; dubs: DubCardData | null };
+type CreatorStats = { scenes: number; plays: number; others: number; likes: number; creator_xp: number };
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -25,6 +29,10 @@ export default function ProfilePage() {
   const [compat, setCompat] = useState<Compat[]>([]);
   const [myCompat, setMyCompat] = useState<Compat | null>(null);
   const [badges, setBadges] = useState<BadgeState[] | null>(null);
+  const [creator, setCreator] = useState<CreatorStats | null>(null);
+  const [scenes, setScenes] = useState<SceneListItem[]>([]);
+  const [tab, setTab] = useState<"dublajlar" | "sahneler">("dublajlar");
+  const [dubsLoaded, setDubsLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,11 +42,15 @@ export default function ProfilePage() {
       if (error) throw error;
       setProfile((p as Profile) ?? null);
       if (!p) return;
-      const [{ data: rows }, { data: c }, { data: st }] = await Promise.all([
+      const [{ data: rows }, { data: c }, { data: st }, { data: cs }, { data: sc }] = await Promise.all([
         sb().from("dub_participants").select(`lines, dubs(${DUB_CARD_SELECT})`).eq("user_id", p.id),
         sb().rpc("compat_for", { p_user: p.id }),
         sb().rpc("badge_stats", { p_user: p.id }),
+        sb().rpc("creator_stats", { p_user: p.id }),
+        sb().rpc("list_scenes", { p_creator: p.id, p_sort: "populer", p_limit: 60 }),
       ]);
+      setCreator((cs as CreatorStats) ?? null);
+      setScenes(((sc as SceneListItem[]) ?? []).filter((x) => x.line_count > 0));
       // Rozetler bağımsız: istatistik alınamazsa (ör. migration 004 yoksa) sadece rozet bölümü gizlenir
       try {
         const bs = st as BadgeStats | null;
@@ -50,8 +62,10 @@ export default function ProfilePage() {
       setDubs(list.map((r) => r.dubs!));
       setLines(list.reduce((s, r) => s + r.lines, 0));
       setCompat((c as Compat[]) ?? []);
+      setDubsLoaded(true);
     } catch (e) {
       setError(errMsg(e));
+      setDubsLoaded(true);
     }
   }, [username]);
 
@@ -67,12 +81,7 @@ export default function ProfilePage() {
     setMyCompat(compat.find((c) => c.partner === me.profile.id) ?? null);
   }, [me, profile, compat, isMe]);
 
-  if (profile === undefined)
-    return (
-      <main className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-20 text-sm text-muted sm:px-6">
-        <Spinner /> Profil yükleniyor
-      </main>
-    );
+  if (profile === undefined) return <ProfileSkeleton />;
   if (profile === null)
     return (
       <main className="mx-auto flex max-w-md flex-col gap-4 px-4 py-16">
@@ -100,7 +109,7 @@ export default function ProfilePage() {
       {/* Başlık */}
       <section className="flex flex-col gap-6 pt-10 pb-8 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-center gap-4">
-          <Avatar name={p.display_name} color={p.color} size={72} />
+          <Avatar name={p.display_name} color={p.color} path={p.avatar_path} size={72} className="ring-1 ring-line-strong" />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="truncate text-2xl font-semibold tracking-tight sm:text-[28px]">{p.display_name}</h1>
@@ -111,13 +120,22 @@ export default function ProfilePage() {
                   </span>
                 ))}
             </div>
-            <p className="mt-0.5 text-sm text-muted">
-              @{p.username} · {new Date(p.created_at).toLocaleDateString("tr-TR", { month: "long", year: "numeric" })} tarihinden beri
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-muted">
+              <span>
+                @{p.username} · {new Date(p.created_at).toLocaleDateString("tr-TR", { month: "long", year: "numeric" })} tarihinden beri
+              </span>
+              {creator && creator.scenes > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-surface-2 px-1.5 py-0.5 text-xs text-fg-2" title="Kütüphaneye sahne ekledi">
+                  <Video className="size-3" /> Yapımcı · {creator.scenes} sahne
+                </span>
+              )}
             </p>
             {p.bio && <p className="mt-2 max-w-lg text-sm text-fg-2">{p.bio}</p>}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col items-start gap-3 sm:items-end">
+          {badges?.some((b) => b.id === "kurucu" && b.earned) && <AwardPlaque eyebrow="FAM-IO · ÖZEL ROZET" title="Kurucu" tone="gold" />}
+          <div className="flex items-center gap-2">
           {isMe && (
             <Button size="sm" icon={<Pencil className="size-3.5" />} onClick={() => setEditing(true)}>
               Profili düzenle
@@ -134,6 +152,7 @@ export default function ProfilePage() {
               </div>
             </div>
           )}
+          </div>
         </div>
       </section>
 
@@ -170,28 +189,58 @@ export default function ProfilePage() {
         <Stat label="Beğeni" value={likes} icon={<Heart className="size-4" />} sub="dublajlarının toplamı" />
       </section>
 
-      {badges && badges.length > 0 && <BadgeGrid badges={badges} isMe={!!isMe} />}
+      {badges === null ? (
+        <section className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="h-[74px] rounded-[var(--radius-card)]" />
+          ))}
+        </section>
+      ) : (
+        badges.length > 0 && <BadgeGrid badges={badges} isMe={!!isMe} />
+      )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        {/* Dublajlar */}
+        {/* Dublajlar / Sahneleri */}
         <section className="min-w-0">
-          <h2 className="mb-4 text-sm font-medium">Dublajlar</h2>
-          {dubs.length === 0 ? (
-            <div className="panel flex flex-col items-center gap-2 px-6 py-12 text-center">
-              <Mic className="size-5 text-muted" />
-              <p className="text-sm text-muted">{isMe ? "Henüz tamamlanmış bir sahnen yok. Bir oda kur ya da arkadaşının odasına katıl." : "Henüz tamamlanmış bir sahne yok."}</p>
-              {isMe && (
-                <ButtonLink href="/sahneler" size="sm" variant="primary" className="mt-2">
-                  Sahne seç
-                </ButtonLink>
-              )}
-            </div>
+          <div className="mb-4 flex items-center gap-1 border-b border-line" role="tablist">
+            <TabBtn on={tab === "dublajlar"} onClick={() => setTab("dublajlar")} count={dubs.length}>
+              Dublajlar
+            </TabBtn>
+            {(scenes.length > 0 || isMe) && (
+              <TabBtn on={tab === "sahneler"} onClick={() => setTab("sahneler")} count={scenes.length}>
+                Eklediği sahneler
+              </TabBtn>
+            )}
+          </div>
+          {tab === "dublajlar" ? (
+            !dubsLoaded ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <DubCardSkeleton />
+                <DubCardSkeleton />
+              </div>
+            ) : dubs.length === 0 ? (
+              <EmptyState
+                icon={<Mic className="size-5" />}
+                title={isMe ? "Henüz tamamlanmış bir sahnen yok" : "Henüz dublaj yok"}
+                action={
+                  isMe && (
+                    <ButtonLink href="/sahneler" size="sm" variant="primary">
+                      Sahne seç
+                    </ButtonLink>
+                  )
+                }
+              >
+                {isMe ? "Bir oda kur ya da arkadaşının odasına katıl. Tamamladığın her sahne buraya işlenir." : "Tamamladığı sahneler burada görünecek."}
+              </EmptyState>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {dubs.map((d) => (
+                  <DubCard key={d.id} dub={d} highlight={p.display_name} />
+                ))}
+              </div>
+            )
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {dubs.map((d) => (
-                <DubCard key={d.id} dub={d} highlight={p.display_name} />
-              ))}
-            </div>
+            <CreatorPanel stats={creator} scenes={scenes} isMe={!!isMe} />
           )}
         </section>
 
@@ -212,7 +261,7 @@ export default function ProfilePage() {
                     <li key={c.partner}>
                       <Link href={`/u/${c.username}`} className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface-2">
                         <span className="w-4 text-center font-mono text-[11px] text-muted">{i + 1}</span>
-                        <Avatar name={c.display_name} color={c.color} size={28} />
+                        <Avatar name={c.display_name} color={c.color} path={c.avatar_path} size={28} />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
                             <span className="truncate text-sm">{c.display_name}</span>
@@ -242,6 +291,11 @@ export default function ProfilePage() {
               <li>Günün ilk sahnesi: +20 XP + seri × 5 (en çok 50)</li>
               <li>Dublajın beğenilince: +5 XP</li>
               <li>Oylamada aldığın her oy: +10 XP</li>
+            </ul>
+            <h3 className="mt-4 text-sm font-medium">Yapımcı XP&apos;si</h3>
+            <ul className="mt-2 space-y-1.5 text-xs text-muted">
+              <li>Eklediğin sahne başkalarınca tamamlanınca: +15 XP</li>
+              <li>O sahneden çıkan dublaj beğenilince: +2 XP</li>
             </ul>
           </div>
         </aside>
@@ -313,6 +367,8 @@ function EditProfile({ profile, onClose }: { profile: Profile; onClose: () => vo
   const [name, setName] = useState(profile.display_name);
   const [bio, setBio] = useState(profile.bio ?? "");
   const [color, setColor] = useState(profile.color);
+  // undefined: değişmedi · null: kaldırılacak · Blob: yeni fotoğraf
+  const [photo, setPhoto] = useState<{ blob: Blob; ext: string; url: string } | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -321,35 +377,87 @@ function EditProfile({ profile, onClose }: { profile: Profile; onClose: () => vo
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+  useEffect(() => () => void (photo && URL.revokeObjectURL(photo.url)), [photo]);
+
+  async function pick(file: File | undefined) {
+    if (!file) return;
+    setError(null);
+    try {
+      const r = await squareAvatar(file);
+      setPhoto({ ...r, url: URL.createObjectURL(r.blob) });
+    } catch (e) {
+      setError(errMsg(e));
+    }
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const { error } = await sb()
-      .from("profiles")
-      .update({ display_name: name.trim(), bio: bio.trim() || null, color })
-      .eq("id", profile.id);
-    if (error) {
-      setError(errMsg(error));
+    try {
+      const patch: Partial<Profile> = { display_name: name.trim(), bio: bio.trim() || null, color };
+      if (photo) {
+        const path = `${profile.id}/${Date.now()}.${photo.ext}`;
+        const { error: up } = await sb().storage.from("avatars").upload(path, photo.blob, { contentType: photo.blob.type, cacheControl: "31536000" });
+        if (up) throw up;
+        patch.avatar_path = path;
+      } else if (photo === null) {
+        patch.avatar_path = null;
+      }
+      const { error } = await sb().from("profiles").update(patch).eq("id", profile.id);
+      if (error) throw error;
+      // Eski fotoğrafı sil (depolama dolmasın)
+      if (photo !== undefined && profile.avatar_path) sb().storage.from("avatars").remove([profile.avatar_path]).catch(() => {});
+      await refreshMe();
+      onClose();
+    } catch (e) {
+      setError(errMsg(e));
       setBusy(false);
-      return;
     }
-    await refreshMe();
-    onClose();
   }
+
+  const previewSrc = photo ? photo.url : photo === null ? null : undefined;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center" onClick={onClose}>
-      <form className="panel fade-up flex w-full max-w-md flex-col gap-4 p-5" onClick={(e) => e.stopPropagation()} onSubmit={save}>
+      <form className="panel pop-in flex w-full max-w-md flex-col gap-4 p-5" onClick={(e) => e.stopPropagation()} onSubmit={save}>
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Profili düzenle</h2>
           <IconButton label="Kapat" type="button" onClick={onClose}>
             <X className="size-4" />
           </IconButton>
         </div>
-        <div className="flex items-center gap-3">
-          <Avatar name={name || profile.username} color={color} size={48} />
+        <div className="flex items-center gap-4">
+          <label className="group relative cursor-pointer rounded-full" title="Profil fotoğrafı seç">
+            <Avatar
+              name={name || profile.username}
+              color={color}
+              path={previewSrc === undefined ? profile.avatar_path : null}
+              src={previewSrc ?? undefined}
+              size={64}
+            />
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/55 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+              <Camera className="size-5" />
+            </span>
+            <input type="file" accept="image/*" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
+          </label>
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="flex flex-wrap gap-2">
+              <label className={cx("inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-line-strong bg-surface-2 px-3 text-[13px] hover:bg-surface-3")}>
+                <Camera className="size-3.5" /> Fotoğraf seç
+                <input type="file" accept="image/*" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
+              </label>
+              {(photo || (photo === undefined && profile.avatar_path)) && (
+                <Button type="button" size="sm" variant="ghost" icon={<Trash2 className="size-3.5" />} onClick={() => setPhoto(null)}>
+                  Kaldır
+                </Button>
+              )}
+            </div>
+            <p className="text-[11px] text-muted">Kare olarak kırpılır ve küçültülür. Fotoğraf yoksa baş harfin renkli gösterilir.</p>
+          </div>
+        </div>
+        <div>
+          <span className="eyebrow mb-1.5 block">Renk</span>
           <div className="flex flex-wrap gap-1.5">
             {PROFILE_COLORS.map((c) => (
               <button
@@ -357,6 +465,7 @@ function EditProfile({ profile, onClose }: { profile: Profile; onClose: () => vo
                 type="button"
                 onClick={() => setColor(c)}
                 aria-label={`Renk ${c}`}
+                aria-pressed={color === c}
                 className={cx("size-6 rounded-full ring-offset-2 ring-offset-surface transition", color === c ? "ring-2 ring-fg" : "hover:scale-110")}
                 style={{ background: c }}
               />
@@ -387,5 +496,118 @@ function EditProfile({ profile, onClose }: { profile: Profile; onClose: () => vo
         </div>
       </form>
     </div>
+  );
+}
+
+function TabBtn({ on, onClick, count, children }: { on: boolean; onClick: () => void; count: number; children: React.ReactNode }) {
+  return (
+    <button
+      role="tab"
+      aria-selected={on}
+      onClick={onClick}
+      className={cx(
+        "-mb-px inline-flex h-10 items-center gap-1.5 border-b-2 px-3 text-sm transition-colors",
+        on ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg",
+      )}
+    >
+      {children}
+      <span className="font-mono text-xs text-muted">{count}</span>
+    </button>
+  );
+}
+
+function CreatorPanel({ stats, scenes, isMe }: { stats: CreatorStats | null; scenes: SceneListItem[]; isMe: boolean }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  async function play(id: string) {
+    setBusy(id);
+    setError(null);
+    try {
+      await ensureUser();
+      const { data, error } = await sb().rpc("create_room", { p_scene: id, p_nickname: "" });
+      if (error) throw error;
+      router.push(`/oda/${data}`);
+    } catch (e) {
+      setError(errMsg(e));
+      setBusy(null);
+    }
+  }
+  if (scenes.length === 0)
+    return (
+      <EmptyState
+        icon={<Video className="size-5" />}
+        title={isMe ? "Henüz sahne eklemedin" : "Henüz sahne eklememiş"}
+        action={
+          isMe && (
+            <ButtonLink href="/sahneler/yeni" size="sm" variant="primary">
+              Sahne ekle
+            </ButtonLink>
+          )
+        }
+      >
+        {isMe ? "Eklediğin sahne başkaları tarafından her tamamlandığında +15 XP kazanırsın." : "Kütüphaneye eklediği sahneler burada görünür."}
+      </EmptyState>
+    );
+  return (
+    <div className="flex flex-col gap-4">
+      {stats && (
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-line bg-line sm:grid-cols-4">
+          {[
+            ["Sahne", stats.scenes],
+            ["Oynanma", stats.plays],
+            ["Beğeni", stats.likes],
+            ["Yapımcı XP", stats.creator_xp],
+          ].map(([l, v]) => (
+            <div key={l} className="bg-surface px-4 py-3">
+              <p className="eyebrow">{l}</p>
+              <p className="mt-1 text-xl font-semibold tracking-tight">{v}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      {error && <Notice>{error}</Notice>}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {scenes.map((s) => (
+          <div key={s.id} className="panel flex flex-col overflow-hidden">
+            <SceneThumb videoPath={s.video_path} thumbPath={s.thumb_path}>
+              <span className="pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 rounded bg-black/75 px-1.5 py-0.5 font-mono text-[11px] text-fg-2">
+                <Play className="size-3 fill-current" /> {s.dub_count}
+              </span>
+            </SceneThumb>
+            <div className="flex items-center gap-2 p-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{s.title}</p>
+                <p className="truncate text-[11px] text-muted">
+                  {s.role_count} karakter{s.tags.length ? " · " + s.tags.map((t) => "#" + t).join(" ") : ""}
+                </p>
+              </div>
+              <Button size="sm" loading={busy === s.id} disabled={!!busy} onClick={() => play(s.id)}>
+                Oda kur
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProfileSkeleton() {
+  return (
+    <main className="mx-auto max-w-6xl px-4 pb-20 sm:px-6" aria-busy="true" aria-label="Profil yükleniyor">
+      <section className="flex items-center gap-4 pt-10 pb-8">
+        <Skeleton className="size-[72px] rounded-full" />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+      </section>
+      <Skeleton className="h-36 w-full rounded-[var(--radius-card)]" />
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:w-2/3">
+        <DubCardSkeleton />
+        <DubCardSkeleton />
+      </div>
+    </main>
   );
 }

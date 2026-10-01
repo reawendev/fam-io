@@ -1,11 +1,11 @@
 "use client";
 
-import { AudioLines, Award, Building2, Clapperboard, Crown, Drama, Film, Flame, FlaskConical, Gem, Heart, HeartHandshake, Laugh, MessageCircle, Mic, MicVocal, Mountain, Radio, Sparkles, Star, Trophy, Users, Video, WandSparkles, Zap, type LucideIcon } from "lucide-react";
+import { AudioLines, Award, Building2, Castle, Clapperboard, Crown, Drama, Film, Flame, FlaskConical, Gem, Heart, HeartHandshake, Laugh, Medal, MessageCircle, Mic, MicVocal, Mountain, PartyPopper, Popcorn, Radio, Sparkles, Star, Ticket, Trophy, Users, Video, WandSparkles, Zap, type LucideIcon } from "lucide-react";
 import { useId } from "react";
 import { CUSTOM_BADGE_IMAGES, type Tier } from "@/lib/badges";
 import { cx } from "./ui";
 
-const ICONS: Record<string, LucideIcon> = { AudioLines, Award, Building2, Clapperboard, Crown, Drama, Film, Flame, FlaskConical, Gem, Heart, HeartHandshake, Laugh, MessageCircle, Mic, MicVocal, Mountain, Radio, Sparkles, Star, Trophy, Users, Video, WandSparkles, Zap };
+const ICONS: Record<string, LucideIcon> = { AudioLines, Award, Building2, Castle, Clapperboard, Crown, Drama, Film, Flame, FlaskConical, Gem, Heart, HeartHandshake, Laugh, Medal, MessageCircle, Mic, MicVocal, Mountain, PartyPopper, Popcorn, Radio, Sparkles, Star, Ticket, Trophy, Users, Video, WandSparkles, Zap };
 
 const METAL: Record<Exclude<Tier, "ozel">, { hi: string; mid: string; lo: string; glyph: string }> = {
   bronz: { hi: "#f3c49a", mid: "#c07a45", lo: "#6e3f1f", glyph: "#e8a877" },
