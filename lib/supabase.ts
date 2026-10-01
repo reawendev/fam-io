@@ -68,6 +68,7 @@ export function serverOffset(): Promise<number> {
 }
 
 const MIGRATION_HINT: [RegExp, string][] = [
+  [/set_room_mode|claim_foley|write_line|finish_writing|save_foley|duel_|room_cards|room_secrets|room_foley|room_line_texts|dub_cards|dub_secrets|dub_foley|dub_line_texts|reveal_impostor|post_results|mode_stats|shop_items|user_items|buy_item|equip_item|profile_comments|banner_path|voice_path|equipped|teams|team_|create_team|join_team|leave_team|discord_link|'rooms' and|mode_state|foley_user/i, "006_modlar_magaza_ekipler.sql"],
   [/claim_role|release_role|column .*picked/i, "002_karakter_secimi.sql"],
   [/'scenes' and 'profiles'|list_scenes|popular_tags|leaderboard|creator_|kick_player|set_room_lock|transfer_host|is_admin|admin_|storage_orphans|avatar_path|thumb_path|tags|locked|banned/i, "005_creator_liderlik_yonetim.sql"],
   [/set_recording_effect|cast_vote|badge_stats|dub_votes|user_badges|effect/i, "004_efekt_oylama_rozet_discord.sql"],

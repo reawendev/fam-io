@@ -4,7 +4,7 @@ import { Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { refreshMe, useMe } from "@/lib/auth";
-import { computeBadges, TIER_LABEL, type BadgeState, type BadgeStats } from "@/lib/badges";
+import { computeBadges, fetchBadgeStats, TIER_LABEL, type BadgeState } from "@/lib/badges";
 import { levelInfo, levelTitle } from "@/lib/progress";
 import { sb } from "@/lib/supabase";
 import BadgeIcon from "./BadgeIcon";
@@ -62,9 +62,9 @@ export default function RewardToaster() {
     (u: string) => {
       if (badgeTimer.current) clearTimeout(badgeTimer.current);
       badgeTimer.current = setTimeout(async () => {
-        const { data, error } = await sb().rpc("badge_stats", { p_user: u });
-        if (error || !data || !Array.isArray((data as BadgeStats).special)) return;
-        const earned = computeBadges(data as BadgeStats).filter((b) => b.earned);
+        const stats = await fetchBadgeStats(sb, u);
+        if (!stats) return;
+        const earned = computeBadges(stats).filter((b) => b.earned);
         const k = `famio.badges.${u}`;
         const raw = store.get(k);
         store.set(k, JSON.stringify(earned.map((b) => b.id)));

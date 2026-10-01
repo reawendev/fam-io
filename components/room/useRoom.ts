@@ -27,16 +27,16 @@ export function useRoom(code: string) {
   }, []);
 
   // Oyunculara profil fotoğrafı / renk ekle (profil değişmedikçe önbellekten)
-  const profileCache = useRef(new Map<string, Pick<RoomPlayer, "color" | "avatar_path" | "username">>());
+  const profileCache = useRef(new Map<string, Pick<RoomPlayer, "color" | "avatar_path" | "username" | "voice_path" | "equipped">>());
   const loadPlayers = useCallback(async (roomId: string) => {
     const { data } = await sb().from("room_players").select("*").eq("room_id", roomId).order("joined_at");
     if (!data) return;
     const list = data as RoomPlayer[];
     const missing = list.map((p) => p.user_id).filter((id) => !profileCache.current.has(id));
     if (missing.length) {
-      const { data: profs } = await sb().from("profiles").select("id, username, color, avatar_path").in("id", missing);
-      for (const p of (profs as { id: string; username: string; color: string; avatar_path: string | null }[]) ?? [])
-        profileCache.current.set(p.id, { username: p.username, color: p.color, avatar_path: p.avatar_path });
+      const { data: profs } = await sb().from("profiles").select("id, username, color, avatar_path, voice_path, equipped").in("id", missing);
+      for (const p of (profs as (Pick<RoomPlayer, "username" | "color" | "avatar_path" | "voice_path" | "equipped"> & { id: string })[]) ?? [])
+        profileCache.current.set(p.id, { username: p.username, color: p.color, avatar_path: p.avatar_path, voice_path: p.voice_path, equipped: p.equipped });
     }
     setPlayers(list.map((p) => ({ ...p, ...profileCache.current.get(p.user_id) })));
   }, []);

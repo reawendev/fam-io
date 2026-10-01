@@ -72,3 +72,24 @@ export async function videoThumbnail(src: string, at?: number): Promise<{ blob: 
     v.load();
   }
 }
+
+/** Profil kapağı: 3:1 oranında ortadan kırpar, 1500×500 JPEG (~100–200 KB) */
+export async function bannerImage(file: File): Promise<{ blob: Blob; ext: string }> {
+  if (!file.type.startsWith("image/")) throw new Error("Bir görsel dosyası seç (JPG, PNG, WebP).");
+  if (file.size > 20 * 1024 * 1024) throw new Error("Görsel en fazla 20 MB olabilir.");
+  const bmp = await createImageBitmap(file).catch(() => null);
+  if (!bmp) throw new Error("Bu görsel açılamadı. Başka bir dosya dene.");
+  const W = 1500;
+  const H = 500;
+  const scale = Math.max(W / bmp.width, H / bmp.height);
+  const sw = W / scale;
+  const sh = H / scale;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext("2d")!;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bmp, (bmp.width - sw) / 2, (bmp.height - sh) / 2, sw, sh, 0, 0, W, H);
+  bmp.close();
+  return { blob: await canvasToBlob(c, "image/jpeg", 0.84), ext: "jpg" };
+}

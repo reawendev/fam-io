@@ -1,9 +1,13 @@
 "use client";
 
-import { Crown, Lock, LockOpen, LogOut, Mic, MicOff, Shuffle, UserX } from "lucide-react";
+import { Bell, BellOff, Crown, Link2, Lock, LockOpen, LogOut, Mic, MicOff, Shuffle, Swords, UserX, Volume2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { Avatar, Button, cx, IconButton, Notice, RoleTag, Swatch } from "@/components/ui";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Avatar, Button, cx, IconButton, Notice, RoleTag, Swatch, UserName } from "@/components/ui";
+import ModePicker from "./ModePicker";
+import { playEntrance } from "@/lib/shop";
+import { MODES } from "@/lib/modes";
+import type { GameMod, GameMode } from "@/lib/types";
 import MicWave from "@/components/MicWave";
 import { CreatorTag } from "@/components/SceneBits";
 import { errMsg, publicUrl, sb } from "@/lib/supabase";
@@ -39,7 +43,30 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
   };
   const unclaimed = roles.filter((r) => !ownerOf(r.id)).length;
   const withRole = new Set(assignments.map((a) => a.user_id));
-  const spectators = Math.max(0, players.length - roles.length);
+  const spectators = Math.max(0, players.length - roles.length - (room.foley_user ? 1 : 0));
+  const mode: GameMode = room.mode ?? "klasik";
+  const mods: GameMod[] = room.mods ?? [];
+  const rolesMode = mode === "klasik" || mode === "senarist";
+  const minPlayers = MODES.find((m) => m.id === mode)?.min ?? 1;
+  // Başlarken karakter alacak kişi sayısı (tahmini): foley yapan hariç, karakter sayısı kadar
+  const actors = Math.min(players.length - (room.foley_user && players.length > 1 ? 1 : 0), roles.length);
+
+  // Odaya biri katılınca imza sesi / giriş sesi çal (sessize alınabilir)
+  const [sounds, setSounds] = useState(true);
+  useEffect(() => {
+    try {
+      setSounds(localStorage.getItem("famio.joinSounds") !== "0");
+    } catch {}
+  }, []);
+  const seen = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const ids = new Set(players.map((p) => p.user_id));
+    if (seen.current && sounds) {
+      const fresh = players.filter((p) => !seen.current!.has(p.user_id) && p.user_id !== me);
+      fresh.slice(0, 2).forEach((p, i) => setTimeout(() => playEntrance(p, (path) => publicUrl("avatars", path)), i * 1200));
+    }
+    seen.current = ids;
+  }, [players, me, sounds]);
 
   useEffect(() => {
     if (!isHost) return;
@@ -89,7 +116,7 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
 
   return (
     <main className="mx-auto grid max-w-6xl gap-5 px-4 py-6 pb-20 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="flex min-w-0 flex-col gap-4">
+      <section className="flex min-w-0 flex-col gap-4 lg:row-span-2">
         <div className="panel overflow-hidden">
           <video
             key={scene.id}
@@ -125,10 +152,32 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
             )}
           </div>
         </div>
+        <ModePicker
+          room={room}
+          isHost={isHost}
+          busy={!!busy}
+          players={players.length}
+          onChange={(m, ms) => rpc("set_room_mode", { p_room: room.id, p_mode: m, p_mods: ms }, "mode")}
+        />
       </section>
 
       <aside className="flex flex-col gap-4">
         {error && <Notice>{error}</Notice>}
+        {!rolesMode ? (
+          <div className="panel flex items-start gap-3 p-4">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+              {mode === "zincir" ? <Link2 className="size-4" /> : <Swords className="size-4" />}
+            </span>
+            <div className="text-sm">
+              <p className="font-medium">{mode === "zincir" ? "Herkes tüm sahneyi seslendirir" : "Karakter seçimi yok"}</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted">
+                {mode === "zincir"
+                  ? `Başlarken sıra rastgele belirlenir. Sahnede ${roles.length} karakter, ${scene.scene_lines.length} replik var; kısa sahneler bu modda daha eğlenceli.`
+                  : "Başlarken oyuncular rastgele eşleşir. Her maçta ikiniz aynı repliği seslendirirsiniz, diğerleri oylar. Tek kalan bir tur bay geçer."}
+              </p>
+            </div>
+          </div>
+        ) : (
         <div className="panel">
           <div className="panel-head">
             <h3 className="text-sm font-medium">Karakterini seç</h3>
@@ -177,10 +226,35 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
               );
             })}
           </ul>
+          {mods.includes("foley") && (
+            <div className={cx("flex items-center gap-3 border-t border-line px-4 py-3", room.foley_user === me && "bg-surface-2")}>
+              <Volume2 className="size-3.5 text-muted" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">Foley ustası</p>
+                <p className="text-[11px] text-muted">Konuşma yok; tüm sahnenin efekt seslerini yapar</p>
+              </div>
+              {!room.foley_user ? (
+                <Button size="sm" loading={busy === "foley"} disabled={!!busy} onClick={() => rpc("claim_foley", { p_room: room.id, p_take: true }, "foley")}>
+                  Seç
+                </Button>
+              ) : room.foley_user === me ? (
+                <div className="flex items-center gap-1">
+                  <span className="text-xs font-medium text-accent">Sen</span>
+                  <Button size="sm" variant="ghost" loading={busy === "foley"} disabled={!!busy} onClick={() => rpc("claim_foley", { p_room: room.id, p_take: false }, "foley")}>
+                    Bırak
+                  </Button>
+                </div>
+              ) : (
+                <span className="max-w-24 truncate text-[13px] text-fg-2">{nickOf(room.foley_user)}</span>
+              )}
+            </div>
+          )}
           <p className="border-t border-line px-4 py-2.5 text-xs text-muted">
             Birden fazla karakter seçebilirsin. Seçilmeyenler başlarken rastgele dağıtılır.
+            {mods.includes("hain") && " Hain, karakteri olan oyunculardan gizlice seçilir (en az 3 kişi)."}
           </p>
         </div>
+        )}
 
         <div className="panel">
           <div className="panel-head">
@@ -213,20 +287,21 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
               const my = assignments.filter((a) => a.user_id === p.user_id);
               return (
                 <li key={p.user_id} className="group flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-surface-2/60">
-                  <Avatar name={p.nickname} color={p.color} path={p.avatar_path} />
+                  <Avatar name={p.nickname} color={p.color} path={p.avatar_path} frame={p.equipped?.frame} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5 text-sm">
-                      <span className="truncate">{p.nickname}</span>
+                      <UserName name={p.nickname} fx={p.equipped?.name} className="truncate" />
                       {p.user_id === me && <span className="text-xs text-muted">(sen)</span>}
                       {p.user_id === room.host_id && <Crown className="size-3.5 text-accent" aria-label="Oda sahibi" />}
                     </span>
                   </span>
                   <span className="flex flex-wrap justify-end gap-1">
-                    {my.map((a) => {
+                    {room.foley_user === p.user_id && <span className="text-[11px] text-fg-2">foley</span>}
+                    {rolesMode && my.map((a) => {
                       const role = roles.find((r) => r.id === a.role_id);
                       return role ? <RoleTag key={a.role_id} name={role.name} color={role.color} className="h-5 px-1.5 text-[11px]" /> : null;
                     })}
-                    {!withRole.has(p.user_id) && <span className="text-xs text-muted">seçmedi</span>}
+                    {rolesMode && !withRole.has(p.user_id) && room.foley_user !== p.user_id && <span className="text-xs text-muted">seçmedi</span>}
                   </span>
                   {isHost && p.user_id !== me && (
                     <span className="flex shrink-0 gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
@@ -267,12 +342,16 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
                 variant="primary"
                 size="lg"
                 loading={busy === "start_game"}
-                disabled={!!busy || players.length === 0 || scene.scene_lines.length === 0}
+                disabled={!!busy || players.length < minPlayers || scene.scene_lines.length === 0}
                 onClick={() => rpc("start_game", { p_room: room.id })}
               >
-                Kayda başla
+                {mode === "duello" ? "Turnuvayı başlat" : mode === "zincir" ? "Zinciri başlat" : mode === "senarist" ? "Yazıma başla" : "Kayda başla"}
               </Button>
-              {(unclaimed > 0 || spectators > 0) && (
+              {players.length < minPlayers && <p className="text-xs text-amber-200">Bu mod için en az {minPlayers} oyuncu gerekir.</p>}
+              {mods.includes("hain") && actors < 3 && rolesMode && (
+                <p className="text-xs text-amber-200">Hain için karakteri olan en az 3 oyuncu gerekir; yoksa bu tur hainsiz oynanır.</p>
+              )}
+              {rolesMode && (unclaimed > 0 || spectators > 0) && (
                 <p className="flex items-start gap-1.5 text-xs text-muted">
                   <Shuffle className="mt-px size-3.5 shrink-0" />
                   <span>
@@ -286,6 +365,19 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
             <p className="py-1 text-center text-sm text-muted">Oda sahibinin kaydı başlatması bekleniyor</p>
           )}
           <p className="text-xs text-muted">Kulaklık kullanmak kayıt kalitesini artırır.</p>
+          <button
+            className="flex items-center gap-1.5 self-start text-xs text-muted transition-colors hover:text-fg"
+            onClick={() => {
+              const v = !sounds;
+              setSounds(v);
+              try {
+                localStorage.setItem("famio.joinSounds", v ? "1" : "0");
+              } catch {}
+            }}
+            aria-pressed={sounds}
+          >
+            {sounds ? <Bell className="size-3.5" /> : <BellOff className="size-3.5" />} Giriş sesleri {sounds ? "açık" : "kapalı"}
+          </button>
           <button
             className="flex items-center gap-1.5 self-start text-xs text-muted transition-colors hover:text-red-300"
             disabled={!!busy}

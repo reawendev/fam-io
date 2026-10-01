@@ -354,7 +354,8 @@ language sql stable as $$
   select date_trunc('week', p_at at time zone 'Europe/Istanbul') at time zone 'Europe/Istanbul';
 $$;
 
-create or replace function public.leaderboard(p_period text default 'week', p_limit int default 25)
+drop function if exists public.leaderboard(text, int);   -- 0.6.0'da dönüş tipi değişti
+create function public.leaderboard(p_period text default 'week', p_limit int default 25)
 returns table (user_id uuid, username text, display_name text, color text, avatar_path text,
                xp int, dubs int, mvp int, likes int)
 language plpgsql stable security definer set search_path = public as $$

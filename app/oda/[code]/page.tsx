@@ -10,13 +10,32 @@ import Finale from "@/components/room/Finale";
 import { Button, ButtonLink, cx, Notice, Spinner } from "@/components/ui";
 import { errMsg, sb } from "@/lib/supabase";
 import { useMe } from "@/lib/auth";
-import type { RoomStatus } from "@/lib/types";
+import type { GameMode, RoomStatus } from "@/lib/types";
+import Writer from "@/components/room/Writer";
+import DuelArena from "@/components/room/DuelArena";
+import ChainFinale from "@/components/room/ChainFinale";
+import { modeName } from "@/lib/modes";
 
-const PHASES: { id: RoomStatus; label: string }[] = [
-  { id: "lobby", label: "Lobi" },
-  { id: "recording", label: "Kayıt" },
-  { id: "finale", label: "Final" },
-];
+function phasesFor(mode?: GameMode): { id: RoomStatus; label: string }[] {
+  if (mode === "senarist")
+    return [
+      { id: "lobby", label: "Lobi" },
+      { id: "writing", label: "Yazım" },
+      { id: "recording", label: "Kayıt" },
+      { id: "finale", label: "Final" },
+    ];
+  if (mode === "duello")
+    return [
+      { id: "lobby", label: "Lobi" },
+      { id: "recording", label: "Düello" },
+      { id: "finale", label: "Şampiyon" },
+    ];
+  return [
+    { id: "lobby", label: "Lobi" },
+    { id: "recording", label: mode === "zincir" ? "Zincir" : "Kayıt" },
+    { id: "finale", label: "Final" },
+  ];
+}
 
 export default function OdaPage() {
   const { code } = useParams<{ code: string }>();
@@ -126,14 +145,26 @@ export default function OdaPage() {
 
   return (
     <>
-      <RoomBar code={room.code} title={r.scene.title} status={room.status} locked={!!room.locked} />
+      <RoomBar code={room.code} title={r.scene.title} status={room.status} locked={!!room.locked} mode={room.mode} />
       {r.error && (
         <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
           <Notice>{r.error}</Notice>
         </div>
       )}
       {room.status === "lobby" && <Lobby {...common} />}
-      {room.status === "recording" &&
+      {room.status === "writing" &&
+        (inRoom ? (
+          <Writer {...common} />
+        ) : (
+          <Center>
+            <div className="max-w-sm text-center">
+              <p className="font-medium">Senaristler yazıyor</p>
+              <p className="mt-1 text-sm text-muted">Final başlayınca bu sayfadan izleyebilirsin.</p>
+            </div>
+          </Center>
+        ))}
+      {room.status === "recording" && room.mode === "duello" && <DuelArena {...common} />}
+      {room.status === "recording" && room.mode !== "duello" &&
         (inRoom ? (
           <Recorder {...common} />
         ) : (
@@ -144,13 +175,15 @@ export default function OdaPage() {
             </div>
           </Center>
         ))}
-      {room.status === "finale" && <Finale {...common} />}
+      {room.status === "finale" &&
+        (room.mode === "duello" ? <DuelArena {...common} /> : room.mode === "zincir" ? <ChainFinale {...common} /> : <Finale {...common} />)}
     </>
   );
 }
 
-function RoomBar({ code, title, status, locked }: { code: string; title: string; status: RoomStatus; locked: boolean }) {
+function RoomBar({ code, title, status, locked, mode }: { code: string; title: string; status: RoomStatus; locked: boolean; mode?: GameMode }) {
   const [copied, setCopied] = useState(false);
+  const PHASES = phasesFor(mode);
   const idx = PHASES.findIndex((p) => p.id === status);
   async function copy() {
     const url = `${location.origin}/oda/${code}`;
@@ -183,6 +216,9 @@ function RoomBar({ code, title, status, locked }: { code: string; title: string;
         )}
         <span className="hidden h-4 w-px bg-line sm:block" />
         <span className="hidden truncate text-sm text-fg-2 sm:block">{title}</span>
+        {mode && mode !== "klasik" && (
+          <span className="hidden rounded-md bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent md:inline">{modeName(mode)}</span>
+        )}
         <ol className="ml-auto flex items-center gap-1 text-xs">
           {PHASES.map((p, i) => (
             <li key={p.id} className="flex items-center gap-1">

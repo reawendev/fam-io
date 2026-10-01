@@ -3,12 +3,16 @@
 import { Clapperboard, Crown, Heart, Medal, Mic, Play, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Avatar, cx, EmptyState, Notice, PageHeader, Skeleton } from "@/components/ui";
+import { Avatar, cx, EmptyState, Notice, PageHeader, Skeleton, UserName } from "@/components/ui";
+import type { Equipped } from "@/lib/types";
 import { useMe } from "@/lib/auth";
 import { levelInfo } from "@/lib/progress";
 import { errMsg, sb } from "@/lib/supabase";
 
 type Row = {
+  equipped?: Equipped;
+  team_tag?: string | null;
+  team_color?: string | null;
   user_id: string;
   username: string;
   display_name: string;
@@ -202,7 +206,7 @@ export default function Liderlik() {
   );
 }
 
-type Person = { user_id: string; username: string; display_name: string; color: string; avatar_path: string | null };
+type Person = { user_id: string; username: string; display_name: string; color: string; avatar_path: string | null; equipped?: Equipped; team_tag?: string | null; team_color?: string | null };
 
 function Podium({ items }: { items: (Person & { value: string; sub: string })[] }) {
   if (items.length === 0) return null;
@@ -221,6 +225,7 @@ function Podium({ items }: { items: (Person & { value: string; sub: string })[] 
                 name={p.display_name}
                 color={p.color}
                 path={p.avatar_path}
+                frame={p.equipped?.frame}
                 size={ranks[i] === 1 ? 64 : 48}
                 className={cx("ring-2", ranks[i] === 1 ? "ring-accent" : "ring-line-strong")}
               />
@@ -251,10 +256,15 @@ function BoardRow({ rank, person, me, level, children }: { rank: number; person:
     <li className={cx("flex items-center gap-3 px-3 py-2.5 sm:px-4", me && "bg-accent/[0.06]")}>
       <span className={cx("w-6 text-center font-mono text-sm", rank <= 3 ? "font-semibold text-accent" : "text-muted")}>{rank}</span>
       <Link href={`/u/${person.username}`} className="flex min-w-0 flex-1 items-center gap-2.5">
-        <Avatar name={person.display_name} color={person.color} path={person.avatar_path} size={30} />
+        <Avatar name={person.display_name} color={person.color} path={person.avatar_path} frame={person.equipped?.frame} size={30} />
         <span className="min-w-0">
           <span className="block truncate text-sm font-medium hover:underline">
-            {person.display_name}
+            {person.team_tag && (
+              <span className="mr-1.5 font-mono text-[11px] font-semibold" style={{ color: person.team_color ?? undefined }}>
+                [{person.team_tag}]
+              </span>
+            )}
+            <UserName name={person.display_name} fx={person.equipped?.name} />
             {me && <span className="ml-1.5 text-xs font-normal text-accent">sen</span>}
           </span>
           <span className="block truncate text-[11px] text-muted">

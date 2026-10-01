@@ -224,7 +224,7 @@ function Cleanup({ onDone, hasCron }: { onDone: () => void; hasCron: boolean }) 
       <p className="text-[11px] leading-relaxed text-muted">
         {hasCron
           ? "pg_cron açık: eski odalar her gece otomatik siliniyor."
-          : "İpucu: Supabase'de pg_cron eklentisini açıp 005 dosyasını tekrar çalıştırırsan eski odalar her gece otomatik silinir."}
+          : "İpucu: Supabase'de pg_cron eklentisini açıp README'deki tek satırlık SQL'i çalıştırırsan eski odalar her gece otomatik silinir."}
       </p>
     </div>
   );

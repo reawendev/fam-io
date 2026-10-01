@@ -34,7 +34,12 @@ Ekran görüntüleri: docs/ klasörüne koyup aşağıdaki satırların yorumunu
 
 | | |
 |---|---|
-| 👤 **Profiller** | Kullanıcı adı + şifre ile profil, profil fotoğrafı. Dublajların, level'in, serin ve en uyumlu partnerlerin profilinde. |
+| 🎲 **Oyun modları** | **Klasik**, **Kulaktan kulağa** (orijinali sadece ilk kişi duyar, herkes bir öncekini taklit eder), **Senarist** (önce replikleri yeniden yaz, sonra seslendir) ve **Düello** (aynı replikte eleme usulü turnuva). |
+| 🃏 **Ekler** | **Zorluk kartları** (fısıldayarak, spiker gibi, ağlayarak…), **Hain** (gizli görevli oyuncuyu bul) ve **Foley ustası** (biri konuşmaz, sahnenin efektlerini yapar). |
+| 👤 **Profiller** | Kullanıcı adı + şifre ile profil, profil fotoğrafı, kapak görseli, 5 saniyelik imza sesi ve ziyaretçi defteri. Dublajların, level'in, serin ve en uyumlu partnerlerin profilinde. |
+| 🛍️ **XP mağazası** | Kazandığın XP ile çerçeve, isim efekti, plaket, giriş sesi ve profil kapağı al. Harcamak level'i düşürmez. |
+| 🛡️ **Ekipler** | Arkadaş grubunla ekip kur, davet koduyla topla; haftalık ekip ligi. |
+| 🤖 **Discord komutları** | `/dublaj` ile Discord'dan oda kur, `/liderlik`, `/ekipler`, `/profil`. |
 | 🎬 **Yapımcılar** | Sahne ekleyenler her yerde "Oluşturan: …" etiketiyle görünür; sahneleri oynandıkça yapımcı XP'si ve rozet kazanırlar. |
 | 🥇 **Haftalık liderlik** | Her pazartesi sıfırlanan XP sıralaması, geçen haftanın kazananı, tüm zamanlar ve yapımcılar tablosu. Haftayı birinci bitiren "Haftanın Sesi" rozetini alır. |
 | 🔎 **Kütüphane** | Arama, etiketler (#anime, #komedi…), karakter sayısına göre filtre ve "Trend" sıralaması. Her sahnenin kapak görseli var. |
@@ -130,6 +135,8 @@ npm run dev
 | `SITE_PASSWORD` | *(opsiyonel)* Tanımlanırsa site sadece şifreyi bilenlere açılır (paylaşım linkleri hariç) |
 | `NEXT_PUBLIC_AUTH_EMAIL_DOMAIN` | *(opsiyonel)* Kullanıcı adından üretilen gizli e-posta adreslerinin alan adı |
 | `NEXT_PUBLIC_SITE_URL` | *(opsiyonel)* Sitenin tam adresi (paylaşım görselleri için). Vercel'de boş bırakılabilir, otomatik bulunur. |
+| `DISCORD_PUBLIC_KEY` | *(opsiyonel)* Discord komutları için uygulamanın Public Key'i |
+| `SUPABASE_SERVICE_ROLE_KEY` | *(opsiyonel)* Discord komutları için. **Gizli**; sadece Vercel'de dursun, asla `NEXT_PUBLIC_` ile başlatma |
 
 ### 4. Vercel'e deploy (komut satırından)
 
@@ -148,8 +155,25 @@ macOS/Linux'ta: `npx vercel link`, sonra `npm run deploy`.
 
 ### Güncelleme (mevcut kurulum)
 
-Veritabanı değişiklikleri `supabase/migrations/` klasöründe. Eski bir kurulumu güncellerken yeni dosyaları sırayla SQL Editor'da çalıştır.
+Veritabanı değişiklikleri `supabase/migrations/` klasöründe. Eski bir kurulumu güncellerken yeni dosyaları **sırayla ve birer kez** SQL Editor'da çalıştır (eski bir dosyayı yenisinden sonra tekrar çalıştırma).
 Sıfırdan kurulumda sadece `schema.sql` yeterli. Ayrıntılar: [CHANGELOG.md](CHANGELOG.md).
+
+## 🎲 Oyun modları
+
+Lobide oda sahibi modu ve ekleri seçer.
+
+| Mod | Nasıl oynanır |
+|---|---|
+| **Klasik** | Herkes kendi karakterini seçer ve repliklerini kaydeder; final hep birlikte izlenir. |
+| **Kulaktan kulağa** | Sıra rastgele belirlenir. İlk kişi orijinali dinleyip tüm sahneyi seslendirir. Sonraki kişi orijinali değil, sadece bir öncekinin kaydını duyar (replik metni de gizli) ve onu taklit eder. Final zinciri halka halka çalar; tek bir repliğin nasıl değiştiği de karşılaştırılabilir. |
+| **Senarist** | Önce yazım aşaması: herkes, kendi seslendirmediği karakterlerin repliklerini parodi olarak yeniden yazar. Oda sahibi kayda geçirince yeni metinler seslendirilir. |
+| **Düello** | Oyuncular eşleşir; ikisi aynı repliği seslendirir, rakibin kaydı oylama açılana kadar gizli kalır. Diğerleri oylar, oda sahibi oylamayı kapatır, kazanan sonraki tura geçer. |
+
+| Ek (klasik ve senarist) | |
+|---|---|
+| **Zorluk kartları** | Her repliğe rastgele bir kart çıkar: fısıldayarak, maç spikeri gibi, opera sanatçısı gibi… Finalde "Kartı en iyi oynayan" oylanır. |
+| **Hain** | Karakteri olan en az 3 kişi varsa biri gizlice hain olur ve gizli bir görev alır. Finalden sonra herkes haini tahmin eder. |
+| **Foley ustası** | Bir oyuncu konuşmaz; tüm sahneyi tek seferde kaydedip kapı, ayak sesi, patlama gibi efektleri yapar. |
 
 ## 🏆 Puan sistemi
 
@@ -163,6 +187,9 @@ Sıfırdan kurulumda sadece `schema.sql` yeterli. Ayrıntılar: [CHANGELOG.md](C
 | Oylamada aldığın her oy | +10 (oy geri alınırsa −10) |
 | **Yapımcı:** eklediğin sahne başkalarınca tamamlandı | +15 |
 | **Yapımcı:** o sahneden çıkan dublaj beğenildi | +2 |
+| **Düello:** kazandığın her maç / şampiyonluk | +10 / +50 |
+| **Hain:** yakalanmadan kaçtın | +40 |
+| **Hain:** haini doğru tahmin ettin | +15 |
 
 - **Level:** 1→2 için 100 XP, sonraki her level 50 XP daha fazla ister.
 - **Seri:** En az bir replik kaydettiğin bir sahne finale ulaşınca o gün sayılır (İstanbul saati). Bir gün atlarsan sıfırlanır.
@@ -204,7 +231,40 @@ Kurucu rozeti olan herkes yönetim paneline girebilir. Görselleri kendin üretm
 - **Sahneler:** Sahne sil, sahibi olmayan (eski) sahnelere yapımcı ata, kapağı olmayan sahnelere toplu kapak üret.
 - Dublaj sayfasında yöneticiler her yorumu ve dublajı silebilir.
 
-> **Otomatik temizlik (opsiyonel):** Supabase'de Database → Extensions → `pg_cron`'u açıp `005_creator_liderlik_yonetim.sql` dosyasını tekrar çalıştırırsan eski odalar her gece kendiliğinden silinir.
+> **Otomatik temizlik (opsiyonel):** Supabase'de Database → Extensions → `pg_cron`'u aç, sonra SQL Editor'da şunu bir kez çalıştır; eski odalar her gece kendiliğinden silinir:
+> ```sql
+> select cron.schedule('famio-oda-temizligi', '0 4 * * *', 'select public._cleanup_stale_rooms(3)');
+> ```
+
+## 🤖 Discord komutları (opsiyonel)
+
+Arkadaşların Discord'dan `/dublaj` yazıp oda kurabilir; bot kanala "Odaya katıl" butonlu bir davet atar. Bot için sunucu gerekmez, istekler Vercel'deki `/api/discord` rotasına gelir.
+
+1. [discord.com/developers/applications](https://discord.com/developers/applications) → **New Application**.
+2. **General Information** sayfasından **Application ID** ve **Public Key**'i kopyala.
+3. **Bot** sayfasında **Reset Token** ile bot token'ını al (sadece komutları kaydetmek için gerekir).
+4. **Installation** → Install Link'i aç, `applications.commands` yetkisiyle botu sunucuna ekle.
+5. Vercel'e iki ortam değişkeni ekle: `DISCORD_PUBLIC_KEY` ve `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API → service_role). Sonra yeniden deploy et.
+6. Developer Portal → **General Information** → **Interactions Endpoint URL**: `https://SİTEN.vercel.app/api/discord` → **Save** (Discord adresi doğrular).
+7. Komutları bir kez kaydet (Windows cmd, proje klasöründe):
+   ```bat
+   set DISCORD_APP_ID=uygulama-id
+   set DISCORD_BOT_TOKEN=bot-token
+   set DISCORD_GUILD_ID=sunucu-id
+   node scripts/discord-komutlari.mjs
+   ```
+   `DISCORD_GUILD_ID` verirsen komutlar o sunucuda hemen görünür.
+8. Herkes kendi hesabını bir kez bağlar: fam-io → **Profili düzenle** → **Discord'u bağla** → çıkan kodu Discord'da `/baglan kod:XXXXXX` olarak yazar.
+
+| Komut | Ne yapar |
+|---|---|
+| `/dublaj [sahne] [mod]` | Oda kurar (sahne adı otomatik tamamlanır; boş bırakılırsa popüler bir sahne). |
+| `/baglan kod:…` | Discord hesabını fam-io profiline bağlar. |
+| `/liderlik` | Bu haftanın ilk 10'u. |
+| `/ekipler` | Haftalık ekip ligi. |
+| `/profil kullanici:…` | Bir profilin özeti. |
+
+Finalden sonra oda sahibi oylama panelindeki **Gönder** ile sonuçları (turun seslendirmeni, en komik replik, kart, hain) Discord'a atabilir. Bunun için aşağıdaki webhook ayarı gerekir.
 
 ## 💬 Discord bildirimi (opsiyonel)
 
@@ -247,6 +307,9 @@ fam-io/
 │   ├── sahneler/                # Sahne kütüphanesi (arama, etiket, trend) ve editör
 │   ├── liderlik/                # Haftalık / tüm zamanlar / yapımcılar
 │   ├── yonetim/                 # Yönetim paneli (Kurucu rozeti)
+│   ├── magaza/                  # XP mağazası
+│   ├── ekipler/ + ekip/[slug]/  # Ekip ligi ve ekip sayfası
+│   ├── api/discord/             # Discord slash komutları
 │   ├── oda/[code]/page.tsx      # Oda: lobi → kayıt → final
 │   ├── giris/ + api/giris/      # Opsiyonel site şifresi
 │   └── globals.css
@@ -262,8 +325,16 @@ fam-io/
 │   ├── RewardToaster.tsx        # XP / rozet / level kutlamaları
 │   ├── Onboarding.tsx           # İlk giriş rehberi + tek başına prova
 │   ├── landing/DubbingMachine3D.tsx  # Ana sayfadaki 3D makine
+│   ├── ChainView.tsx            # Kulaktan kulağa sonuç görünümü
+│   ├── Guestbook.tsx            # Ziyaretçi defteri
+│   ├── VoiceRecorder.tsx        # İmza sesi kaydı
+│   ├── AwardPlaque.tsx          # Hologramlı plaket
 │   └── room/
 │       ├── useRoom.ts           # Oda durumu + Supabase Realtime
+│       ├── ModePicker.tsx       # Oyun modu ve ekler
+│       ├── Writer.tsx           # Senarist: yazım aşaması
+│       ├── DuelArena.tsx        # Düello turnuvası
+│       ├── ChainFinale.tsx      # Kulaktan kulağa finali
 │       ├── Lobby.tsx
 │       ├── Recorder.tsx         # Replik bazlı kayıt ve önizleme
 │       └── Finale.tsx           # Senkron final ve jenerik
@@ -279,9 +350,13 @@ fam-io/
 │   ├── image.ts                 # Profil fotoğrafı ve kapak karesi (tarayıcıda)
 │   ├── admin.ts                 # Yönetici kontrolü
 │   ├── og/shared.tsx            # Paylaşım görseli yardımcıları
+│   ├── modes.ts                 # Oyun modları, kartlar
+│   ├── shop.ts                  # Mağaza kozmetikleri, giriş sesleri
+│   ├── teams.ts                 # Ekipler
 │   └── types.ts
 ├── supabase/schema.sql          # Tablolar, RLS, RPC fonksiyonları, storage
 ├── supabase/migrations/         # Mevcut kurulumlar için güncellemeler
+├── scripts/discord-komutlari.mjs # Discord komutlarını kaydet
 ├── deploy.cmd                   # Windows'tan tek komutla Vercel deploy
 └── proxy.ts                     # Şifre kapısı (Next.js 16 proxy)
 ```

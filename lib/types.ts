@@ -35,7 +35,9 @@ export type SceneFull = Scene & { scene_roles: SceneRole[]; scene_lines: SceneLi
 /** Sahne + yapımcı select'i (005 gerekir) */
 export const SCENE_FULL_SELECT = "*, scene_roles(*), scene_lines(*), creator:profiles(username, display_name, color, avatar_path)";
 
-export type RoomStatus = "lobby" | "recording" | "finale";
+export type RoomStatus = "lobby" | "writing" | "recording" | "finale";
+export type GameMode = "klasik" | "zincir" | "senarist" | "duello";
+export type GameMod = "kart" | "hain" | "foley";
 
 export type Room = {
   id: string;
@@ -47,6 +49,10 @@ export type Room = {
   current_dub_id?: string | null;
   locked?: boolean;
   banned?: string[];
+  mode?: GameMode;
+  mods?: GameMod[];
+  mode_state?: { order?: string[]; players?: string[]; champion?: string };
+  foley_user?: string | null;
   created_at: string;
 };
 
@@ -60,7 +66,12 @@ export type RoomPlayer = {
   color?: string;
   avatar_path?: string | null;
   username?: string;
+  voice_path?: string | null;
+  equipped?: Equipped;
 };
+
+/** Mağazadan takılan kozmetikler */
+export type Equipped = { frame?: string; name?: string; plaque?: string; sound?: string; banner?: string };
 
 export type RoomRole = { room_id: string; role_id: string; user_id: string; picked: boolean };
 
@@ -99,13 +110,17 @@ export type Profile = {
   best_streak: number;
   last_streak_day: string | null;
   avatar_path: string | null;
+  banner_path?: string | null;
+  voice_path?: string | null;
+  equipped?: Equipped;
+  spent?: number;
   created_at: string;
 };
 
-export type ProfileLite = Pick<Profile, "username" | "display_name" | "color"> & { avatar_path?: string | null };
+export type ProfileLite = Pick<Profile, "username" | "display_name" | "color"> & { avatar_path?: string | null; equipped?: Equipped };
 
 /** PostgREST select'lerinde profil alanları */
-export const PROFILE_LITE = "username, display_name, color, avatar_path";
+export const PROFILE_LITE = "username, display_name, color, avatar_path, equipped";
 
 /** list_scenes() satırı */
 export type SceneListItem = {
@@ -128,6 +143,10 @@ export type SceneListItem = {
 
 export type Dub = {
   id: string;
+  mode?: GameMode;
+  mods?: GameMod[];
+  chain?: string[] | null;
+  has_impostor?: boolean;
   room_id: string | null;
   scene_id: string;
   created_by: string | null;

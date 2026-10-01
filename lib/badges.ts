@@ -32,6 +32,16 @@ export type BadgeStats = {
   scene_likes?: number;
   /** Haftalık liderlikte birinci olduğu hafta sayısı */
   week_wins?: number;
+  // --- Oyun modları, mağaza, ekip (mode_stats) ---
+  impostor_escapes?: number;
+  detective_hits?: number;
+  duel_titles?: number;
+  card_wins?: number;
+  chains?: number;
+  scripts?: number;
+  foleys?: number;
+  items?: number;
+  team?: boolean;
   special: { badge: string; note: string | null; granted_at: string }[];
 };
 
@@ -97,6 +107,21 @@ export const BADGES: BadgeDef[] = [
   // --- Liderlik ---
   { id: "haftanin_sesi", name: "Haftanın Sesi", desc: "Bir hafta liderlik tablosunda birinci ol.", tier: "altin", icon: "Medal", metric: (s) => s.week_wins ?? 0, goal: 1 },
   { id: "hanedan", name: "Hanedan", desc: "5 hafta liderlik tablosunda birinci ol.", tier: "altin", icon: "Castle", metric: (s) => s.week_wins ?? 0, goal: 5 },
+
+  // --- Oyun modları ---
+  { id: "zincir_halkasi", name: "Zincir Halkası", desc: "Bir kulaktan kulağa oyununda yer al.", tier: "bronz", icon: "Link2", metric: (s) => s.chains ?? 0, goal: 1 },
+  { id: "senarist", name: "Senarist", desc: "Senarist modunda replik yaz.", tier: "bronz", icon: "PenLine", metric: (s) => s.scripts ?? 0, goal: 1 },
+  { id: "foley_ustasi", name: "Foley Ustası", desc: "Bir sahnenin efektlerini yap.", tier: "bronz", icon: "Volume2", metric: (s) => s.foleys ?? 0, goal: 1 },
+  { id: "kart_ustasi", name: "Kart Ustası", desc: "3 kez kartı en iyi oynayan seçil.", tier: "gumus", icon: "Shuffle", metric: (s) => s.card_wins ?? 0, goal: 3 },
+  { id: "dedektif", name: "Dedektif", desc: "Haini 3 kez doğru tahmin et.", tier: "gumus", icon: "Search", metric: (s) => s.detective_hits ?? 0, goal: 3 },
+  { id: "usta_hain", name: "Usta Hain", desc: "Hainken kimseye yakalanma.", tier: "gumus", icon: "VenetianMask", metric: (s) => s.impostor_escapes ?? 0, goal: 1 },
+  { id: "kurnaz", name: "Kurnaz", desc: "Hainken 5 kez yakalanmadan kaç.", tier: "altin", icon: "VenetianMask", metric: (s) => s.impostor_escapes ?? 0, goal: 5 },
+  { id: "sampiyon", name: "Şampiyon", desc: "Bir düello turnuvasını kazan.", tier: "altin", icon: "Swords", metric: (s) => s.duel_titles ?? 0, goal: 1 },
+  { id: "yenilmez", name: "Yenilmez", desc: "5 düello turnuvası kazan.", tier: "altin", icon: "Trophy", metric: (s) => s.duel_titles ?? 0, goal: 5 },
+
+  // --- Mağaza ve ekip ---
+  { id: "koleksiyoncu", name: "Koleksiyoncu", desc: "Mağazadan 5 ürün al.", tier: "gumus", icon: "ShoppingBag", metric: (s) => s.items ?? 0, goal: 5 },
+  { id: "takim_oyuncusu", name: "Takım Oyuncusu", desc: "Bir ekibe katıl.", tier: "bronz", icon: "Users", metric: (s) => (s.team ? 1 : 0), goal: 1 },
 ];
 
 /** Kendi görselini eklediğin rozetlerin id'leri (public/badges/<id>.png) */
@@ -150,4 +175,15 @@ export function featuredBadges(list: BadgeState[], max = 3) {
     .filter((b) => b.earned)
     .sort((a, b) => TIER_RANK[b.tier] - TIER_RANK[a.tier] || list.indexOf(a) - list.indexOf(b))
     .slice(0, max);
+}
+
+
+/** badge_stats + mode_stats (0.6.0) birleşik; mode_stats yoksa (migration 006 çalıştırılmamışsa) sadece temel istatistikler */
+export async function fetchBadgeStats(sb: () => import("@supabase/supabase-js").SupabaseClient, userId: string): Promise<BadgeStats | null> {
+  const [{ data: base, error }, { data: extra }] = await Promise.all([
+    sb().rpc("badge_stats", { p_user: userId }),
+    sb().rpc("mode_stats", { p_user: userId }),
+  ]);
+  if (error || !base || typeof base !== "object" || !Array.isArray((base as BadgeStats).special)) return null;
+  return { ...(base as BadgeStats), ...((extra as Partial<BadgeStats>) ?? {}) };
 }

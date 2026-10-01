@@ -1,5 +1,44 @@
 # Değişiklik notları
 
+## 0.6.0 — 1 Ekim 2026
+
+### Oyun modları
+Lobide oda sahibi modu seçer; ekler klasik ve senarist modlarına eklenebilir.
+- **Kulaktan kulağa:** Sırayla oynanır. İlk kişi orijinali dinleyip tüm sahneyi seslendirir; sonraki kişi orijinali değil, sadece bir öncekinin kaydını duyar (metin de gizli). Final, zinciri halka halka çalar; "Replik replik" bölümünde tek bir repliğin nasıl değiştiği karşılaştırılır.
+- **Senarist:** Önce yazım aşaması: herkes, kendi seslendirmediği karakterlerin repliklerini yeniden yazar (repliğin süresine göre önerilen uzunluk, otomatik kayıt). Sonra yeni metinler seslendirilir; jenerikte "Senaryo" olarak yazarlar anılır.
+- **Düello:** Eleme usulü turnuva. Her maçta iki oyuncu aynı repliği seslendirir (rakibin kaydı oylama açılana kadar gizli), diğerleri oylar, oda sahibi oylamayı kapatır. Tek kalan bay geçer. Maç başına +10, şampiyona +50 XP; Discord'a şampiyon duyurusu. Turnuva ağacı canlı güncellenir.
+- **Ek: Zorluk kartları:** Her repliğe rastgele bir kart çıkar (Fısıldayarak, Maç spikeri gibi, Ağlayarak, Opera sanatçısı gibi… 16 kart). Kayıt ekranında ve finalde görünür; yeni oylama kategorisi "Kartı en iyi oynayan".
+- **Ek: Hain:** Karakteri olan en az 3 kişi varsa biri gizlice hain seçilir ve gizli bir görev alır ("bir repliğinde patlıcan de" gibi). Finalden sonra herkes haini tahmin eder; oda sahibi ya da herkes oy verince açıklanır. Yakalanırsa doğru tahmin eden herkes +15 XP, yakalanmazsa hain +40 XP.
+- **Ek: Foley ustası:** Bir oyuncu konuşmaz; tüm sahneyi tek seferde kaydedip efekt seslerini yapar. Finalde, dublaj sayfasında ve indirilen videoda duyulur.
+- Oda sahibi sonuçları ("Turun seslendirmeni", "En komik replik", kart, hain) tek tuşla Discord'a gönderebilir.
+- Yeni rozetler: Zincir Halkası, Senarist, Foley Ustası, Kart Ustası, Dedektif, Usta Hain, Kurnaz, Şampiyon, Yenilmez.
+
+### XP mağazası (`/magaza`)
+- Kazandığın XP ile kozmetik al: profil çerçeveleri (altın, neon, ateş, buz, gökkuşağı, hologram), isim efektleri, plaketler, giriş sesleri ve profil kapakları. Harcamak level'i düşürmez (bakiye = toplam XP − harcanan).
+- Kozmetikler profilde, başlıkta, lobide, liderlikte, ekip sayfasında ve yorumlarda görünür. Giriş sesi odaya katıldığında diğerlerine çalar (lobide kapatılabilir).
+- Yeni rozetler: Koleksiyoncu, Takım Oyuncusu.
+
+### Profil
+- **Kapak görseli:** Kendi görselini yükle (3:1 kırpılır) ya da mağazadan hazır kapak tak.
+- **İmza sesi:** 5 saniyelik selamını kaydet; profilinde dinlenir, odaya katıldığında çalar.
+- **Ziyaretçi defteri:** Profillere yorum bırakılabilir; yazan, profil sahibi ve yöneticiler silebilir. Canlı güncellenir.
+- Profilde ekip etiketi, satın alınan plaket, çerçeve ve isim efekti.
+
+### Ekipler (`/ekipler`, `/ekip/…`)
+- Ekip kur (ad, 2–4 harfli etiket, renk, logo, açıklama), davet koduyla/linkiyle katıl. Bir kişi tek ekipte; ekip en çok 20 kişi.
+- Haftalık ve tüm zamanlar ekip ligi (üyelerin XP toplamı). Kaptan davet kodunu yeniler, üye çıkarır; kaptan ayrılırsa kaptanlık en eski üyeye geçer.
+- Liderlik tablosunda ve Discord'da ekip etiketi görünür.
+
+### Discord komutları
+- `/dublaj [sahne] [mod]` oda kurar ve kanala "Odaya katıl" butonlu davet atar (sahne adı otomatik tamamlanır), `/baglan kod:…` Discord hesabını profile bağlar, `/liderlik`, `/ekipler`, `/profil kullanici:…`.
+- Kendi sunucu gerekmez: Discord istekleri Vercel'deki `/api/discord` rotasına gelir. Kurulum README'de.
+
+### Veritabanı
+- **Mevcut kurulum için:** `supabase/migrations/006_modlar_magaza_ekipler.sql` dosyasını bir kez çalıştır.
+- `recordings` tekilliği artık (oda, replik, kişi); `dub_recordings` birincil anahtarı (dublaj, replik, kişi).
+- Yeni tablolar: `room_cards`, `room_secrets`, `room_foley`, `room_line_texts`, `duel_matches`, `duel_takes`, `duel_votes`, `duel_results`, `dub_cards`, `dub_secrets`, `dub_foley`, `dub_line_texts`, `shop_items`, `user_items`, `profile_comments`, `teams`, `team_members`, `discord_links`, `discord_link_codes`.
+- Not: 005 dosyasını 006'dan sonra tekrar çalıştırma (bazı fonksiyonları eski haline döndürür). Otomatik oda temizliği için README'deki tek satırlık cron SQL'ini kullan.
+
 ## 0.5.0 — 1 Ekim 2026
 
 ### Yeni

@@ -182,6 +182,7 @@ export default function AwardPlaque({
       aria-label={`${eyebrow}: ${title}`}
       title={`${eyebrow} · ${title}`}
       className={className ?? "block w-[220px] sm:w-[260px]"}
+      style={{ isolation: "isolate" }}
       onMouseEnter={onEnter}
       onMouseMove={onMove}
       onMouseLeave={onLeave}
@@ -242,7 +243,6 @@ export default function AwardPlaque({
                   transformOrigin: "center center",
                   transition: !noInOutAnim ? "transform 200ms ease-out" : "none",
                   animation: noOverlayAnim || still ? "none" : `plaque-overlay-${i + 1} 5s infinite`,
-                  willChange: "transform",
                 }}
               >
                 <polygon points="0,0 260,54 260,0 0,54" fill={fill} filter={`url(#b${uid})`} opacity="0.5" />

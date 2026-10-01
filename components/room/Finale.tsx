@@ -10,6 +10,7 @@ import { audioUnlocked, DubPlayer, recItem, unlockAudio, type DubItem } from "@/
 import { downloadBlob, exportDub, exportSupported, slugify } from "@/lib/exporter";
 import { sortLines, type Recording } from "@/lib/types";
 import { isEffect } from "@/lib/effects";
+import { cardInfo } from "@/lib/modes";
 import VotePanel from "@/components/VotePanel";
 import type { RoomProps } from "./Lobby";
 
@@ -25,6 +26,10 @@ export default function Finale({ room, scene, me, players, assignments, isHost, 
   const lines = useMemo(() => sortLines(scene.scene_lines), [scene]);
   const nickOf = (uid?: string) => players.find((p) => p.user_id === uid)?.nickname ?? "—";
   const actorOf = (roleId: string) => assignments.find((a) => a.role_id === roleId)?.user_id;
+  // Mod ekleri: yeniden yazılmış replikler, kartlar, foley
+  const [rewrites, setRewrites] = useState<Record<string, { text: string | null; author: string }>>({});
+  const [cards, setCards] = useState<Record<string, string>>({});
+  const [foleyBy, setFoleyBy] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<DubPlayer | null>(null);
@@ -57,6 +62,18 @@ export default function Finale({ room, scene, me, players, assignments, isHost, 
         const items = recs
           .filter((r) => lineById[r.line_id])
           .map((r) => recItem(publicUrl("recordings", r.audio_path), r.offset_time, lineById[r.line_id], r.line_id, isEffect(r.effect) ? r.effect : undefined));
+        const [{ data: fo }, { data: tx }, { data: cd }] = await Promise.all([
+          sb().from("room_foley").select("user_id, audio_path, offset_time").eq("room_id", room.id).maybeSingle(),
+          room.mode === "senarist" ? sb().from("room_line_texts").select("line_id, author, text").eq("room_id", room.id) : Promise.resolve({ data: [] }),
+          room.mods?.includes("kart") ? sb().from("room_cards").select("line_id, card").eq("room_id", room.id) : Promise.resolve({ data: [] }),
+        ]);
+        const f = fo as { user_id: string; audio_path: string; offset_time: number } | null;
+        if (f?.audio_path) {
+          items.push({ url: publicUrl("recordings", f.audio_path), at: f.offset_time, from: 0, key: "foley" });
+          setFoleyBy(f.user_id);
+        }
+        setRewrites(Object.fromEntries(((tx as { line_id: string; author: string; text: string | null }[]) ?? []).map((r) => [r.line_id, r])));
+        setCards(Object.fromEntries(((cd as { line_id: string; card: string }[]) ?? []).map((c) => [c.line_id, c.card])));
         itemsRef.current = items;
         const p = new DubPlayer(videoRef.current, { originalVolume: scene.original_volume });
         playerRef.current = p;
@@ -196,11 +213,15 @@ export default function Finale({ room, scene, me, players, assignments, isHost, 
               {active.map((l) => {
                 const r = roleById[l.role_id];
                 return (
-                  <span key={l.id} className="inline-flex items-center gap-1.5 rounded bg-black/80 px-2.5 py-1 text-[13px]">
-                    <span className="size-1.5 rounded-full" style={{ background: r?.color }} />
-                    <span className="font-medium">{nickOf(actorOf(l.role_id))}</span>
-                    <span className="text-fg-2">{r?.name}</span>
-                    {!recorded.has(l.id) && <span className="text-muted">· kayıt yok</span>}
+                  <span key={l.id} className="flex flex-col items-center gap-1">
+                    {rewrites[l.id]?.text && <span className="max-w-xl rounded bg-black/80 px-3 py-1 text-center text-base font-medium sm:text-lg">{rewrites[l.id].text}</span>}
+                    <span className="inline-flex items-center gap-1.5 rounded bg-black/80 px-2.5 py-1 text-[13px]">
+                      <span className="size-1.5 rounded-full" style={{ background: r?.color }} />
+                      <span className="font-medium">{nickOf(actorOf(l.role_id))}</span>
+                      <span className="text-fg-2">{r?.name}</span>
+                      {cards[l.id] && <span className="text-accent">· {cardInfo(cards[l.id])?.emoji} {cardInfo(cards[l.id])?.name}</span>}
+                      {!recorded.has(l.id) && <span className="text-muted">· kayıt yok</span>}
+                    </span>
                   </span>
                 );
               })}
@@ -231,7 +252,14 @@ export default function Finale({ room, scene, me, players, assignments, isHost, 
                   </span>
                 </>
               ) : (
-                <Credits roles={roles} nickOf={nickOf} actorOf={actorOf} creator={scene.creator?.display_name} />
+                <Credits
+                  roles={roles}
+                  nickOf={nickOf}
+                  actorOf={actorOf}
+                  creator={scene.creator?.display_name}
+                  foley={foleyBy ? nickOf(foleyBy) : undefined}
+                  writers={[...new Set(Object.values(rewrites).filter((r) => r.text).map((r) => nickOf(r.author)))]}
+                />
               )}
               {!loaded && unlocked === false && <p className="font-mono text-[11px] text-muted">yükleniyor %{Math.round(pct * 100)}</p>}
             </div>
@@ -327,11 +355,15 @@ function Credits({
   nickOf,
   actorOf,
   creator,
+  foley,
+  writers,
 }: {
   roles: { id: string; name: string; color: string }[];
   nickOf: (uid?: string) => string;
   actorOf: (roleId: string) => string | undefined;
   creator?: string;
+  foley?: string;
+  writers?: string[];
 }) {
   return (
     <div className="fade-up flex flex-col items-center gap-5">
@@ -347,6 +379,24 @@ function Credits({
           </li>
         ))}
       </ul>
+      {(foley || (writers && writers.length > 0)) && (
+        <ul className="flex flex-col gap-1 text-[13px]">
+          {writers && writers.length > 0 && (
+            <li className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+              <span className="text-right text-muted">Senaryo</span>
+              <span className="h-px w-6 bg-line-strong" />
+              <span>{writers.join(", ")}</span>
+            </li>
+          )}
+          {foley && (
+            <li className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+              <span className="text-right text-muted">Foley</span>
+              <span className="h-px w-6 bg-line-strong" />
+              <span>{foley}</span>
+            </li>
+          )}
+        </ul>
+      )}
       {creator && (
         <p className="text-xs text-muted">
           Sahneyi ekleyen <span className="text-fg-2">{creator}</span>
@@ -356,7 +406,7 @@ function Credits({
   );
 }
 
-function DubSaved({ dubId, me }: { dubId: string; me: string }) {
+export function DubSaved({ dubId, me }: { dubId: string; me: string }) {
   const [xp, setXp] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   useEffect(() => {

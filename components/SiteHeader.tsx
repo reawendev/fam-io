@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleHelp, Flame, LogOut, Shield, Trophy, UserRound } from "lucide-react";
+import { CircleHelp, Flame, LogOut, Shield, ShoppingBag, Trophy, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -8,11 +8,13 @@ import { signOut, useMe } from "@/lib/auth";
 import { useIsAdmin } from "@/lib/admin";
 import { openOnboarding } from "./Onboarding";
 import { currentStreak, levelInfo, streakDoneToday } from "@/lib/progress";
-import { Avatar, btn, cx, Logo } from "./ui";
+import { Avatar, btn, cx, Logo, UserName } from "./ui";
 
 const NAV = [
   { href: "/sahneler", label: "Sahneler" },
   { href: "/liderlik", label: "Liderlik" },
+  { href: "/ekipler", label: "Ekipler" },
+  { href: "/magaza", label: "Mağaza" },
   { href: "/sahneler/yeni", label: "Sahne ekle" },
 ];
 
@@ -41,7 +43,7 @@ export default function SiteHeader() {
           <Logo />
         </Link>
         {!inRoom && (
-          <nav className="hidden items-center gap-1 sm:flex">
+          <nav className="hidden items-center gap-1 md:flex">
             {NAV.map((n) => {
               const active = n.href === "/sahneler" ? path === "/sahneler" : path.startsWith(n.href);
               return (
@@ -67,8 +69,8 @@ export default function SiteHeader() {
                   aria-expanded={open}
                   aria-haspopup="menu"
                 >
-                  <Avatar name={me.profile.display_name} color={me.profile.color} path={me.profile.avatar_path} size={24} />
-                  <span className="hidden max-w-32 truncate sm:inline">{me.profile.display_name}</span>
+                  <Avatar name={me.profile.display_name} color={me.profile.color} path={me.profile.avatar_path} frame={me.profile.equipped?.frame} size={24} />
+                  <UserName name={me.profile.display_name} fx={me.profile.equipped?.name} className="hidden max-w-32 truncate sm:inline" />
                   <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-fg-2">Lv {levelInfo(me.profile.xp).level}</span>
                 </button>
                 {open && (
@@ -76,8 +78,14 @@ export default function SiteHeader() {
                     <Link role="menuitem" href={`/u/${me.profile.username}`} className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2">
                       <UserRound className="size-4 text-muted" /> Profilim
                     </Link>
-                    <Link role="menuitem" href="/liderlik" className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2 sm:hidden">
+                    <Link role="menuitem" href="/liderlik" className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2 md:hidden">
                       <Trophy className="size-4 text-muted" /> Liderlik
+                    </Link>
+                    <Link role="menuitem" href="/ekipler" className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2 md:hidden">
+                      <Users className="size-4 text-muted" /> Ekipler
+                    </Link>
+                    <Link role="menuitem" href="/magaza" className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2">
+                      <ShoppingBag className="size-4 text-muted" /> Mağaza
                     </Link>
                     {admin && (
                       <Link role="menuitem" href="/yonetim" className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2">

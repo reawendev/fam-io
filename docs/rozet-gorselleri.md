@@ -124,6 +124,27 @@ Prompt yapısı: **Ortak stil + Seviye çerçevesi + Motif**
 | `haftanin_sesi` | Haftanın Sesi | Altın | `a medal on a ribbon with a microphone in the center and a small "7-day" calendar ring around it (no numbers, just seven dots)` |
 | `hanedan` | Hanedan | Altın | `a small castle tower topped with a crown and a microphone-shaped flag` |
 
+### Oyun modları
+
+| id | Ad | Seviye | Motif |
+|---|---|---|---|
+| `zincir_halkasi` | Zincir Halkası | Bronz | `three chain links where the middle one is shaped like a speech bubble` |
+| `senarist` | Senarist | Bronz | `a fountain pen writing on a tiny film script page` |
+| `foley_ustasi` | Foley Ustası | Bronz | `a pair of coconut shells and a small door hinge with sound lines` |
+| `kart_ustasi` | Kart Ustası | Gümüş | `a fanned hand of three playing cards with microphone symbols instead of suits` |
+| `dedektif` | Dedektif | Gümüş | `a magnifying glass revealing a hidden theater mask` |
+| `usta_hain` | Usta Hain | Gümüş | `a venetian masquerade mask with a sly glint` |
+| `kurnaz` | Kurnaz | Altın | `a venetian mask with a fox silhouette, crown-like gold filigree` |
+| `sampiyon` | Şampiyon | Altın | `two crossed microphones like swords under a small crown` |
+| `yenilmez` | Yenilmez | Altın | `a trophy cup with crossed microphones and a laurel wreath` |
+
+### Mağaza ve ekip
+
+| id | Ad | Seviye | Motif |
+|---|---|---|---|
+| `koleksiyoncu` | Koleksiyoncu | Gümüş | `a small treasure chest overflowing with tiny badges and stars` |
+| `takim_oyuncusu` | Takım Oyuncusu | Bronz | `a shield with three small figures holding hands` |
+
 ---
 
 ## Örnek (tam prompt)

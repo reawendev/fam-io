@@ -4,6 +4,7 @@ import { LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { forwardRef, useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { avatarUrl } from "@/lib/supabase";
+import { frameClass, nameClass } from "@/lib/shop";
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
@@ -119,7 +120,31 @@ const AVATAR_TONES = ["#f97316", "#38bdf8", "#a3e635", "#f472b6", "#c084fc", "#f
  * Profil fotoğrafı; yoksa (ya da yüklenemezse) baş harf. `path` avatars bucket'ındaki yol,
  * `src` doğrudan adres (ör. yükleme önizlemesi).
  */
-export function Avatar({
+export function Avatar(props: {
+  name: string;
+  size?: number;
+  color?: string;
+  path?: string | null;
+  src?: string | null;
+  className?: string;
+  /** Mağazadan alınmış çerçeve (frame_altin …) */
+  frame?: string;
+}) {
+  if (props.frame)
+    return (
+      <span className={frameClass(props.frame)} title="Profil çerçevesi">
+        <AvatarCore {...props} />
+      </span>
+    );
+  return <AvatarCore {...props} />;
+}
+
+/** İsim; mağazadan alınmış isim efektiyle */
+export function UserName({ name, fx, className }: { name: string; fx?: string; className?: string }) {
+  return <span className={cx(nameClass(fx), className)}>{name}</span>;
+}
+
+function AvatarCore({
   name,
   size = 28,
   color,

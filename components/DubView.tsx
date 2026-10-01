@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, Button, ButtonLink, cx, IconButton, Notice, Progress, Skeleton, Spinner } from "@/components/ui";
 import { CreatorTag } from "@/components/SceneBits";
+import ChainView from "@/components/ChainView";
+import { cardInfo, modeName } from "@/lib/modes";
 import { useMe } from "@/lib/auth";
 import { useIsAdmin } from "@/lib/admin";
 import { downloadBlob, exportDub, exportSupported, slugify } from "@/lib/exporter";
@@ -25,10 +27,15 @@ type Full = {
   dub_cast: { role_id: string; user_id: string; profiles: ProfileLite | null }[];
   dub_recordings: { line_id: string; user_id: string; audio_path: string; offset_time: number; effect?: string }[];
   dub_participants: { user_id: string; lines: number; profiles: ProfileLite | null }[];
+  mode?: string;
+  chain?: string[] | null;
+  dub_foley?: { user_id: string; audio_path: string; offset_time: number } | { user_id: string; audio_path: string; offset_time: number }[] | null;
+  dub_line_texts?: { line_id: string; author: string | null; text: string }[];
+  dub_cards?: { line_id: string; card: string }[];
 };
 
 const SELECT =
-  "id, created_at, like_count, comment_count, scenes(*, scene_roles(*), scene_lines(*), creator:profiles(username, display_name, color, avatar_path)), dub_cast(role_id, user_id, profiles(username, display_name, color, avatar_path)), dub_recordings(line_id, user_id, audio_path, offset_time, effect), dub_participants(user_id, lines, profiles(username, display_name, color, avatar_path))";
+  "id, created_at, like_count, comment_count, scenes(*, scene_roles(*), scene_lines(*), creator:profiles(username, display_name, color, avatar_path)), dub_cast(role_id, user_id, profiles(username, display_name, color, avatar_path)), dub_recordings(line_id, user_id, audio_path, offset_time, effect), dub_participants(user_id, lines, profiles(username, display_name, color, avatar_path, equipped)), mode, chain, dub_foley(user_id, audio_path, offset_time), dub_line_texts(line_id, author, text), dub_cards(line_id, card)";
 
 type ExportState =
   | { kind: "idle" }
@@ -68,6 +75,8 @@ export default function DubView({ id }: { id: string }) {
   const lines = useMemo(() => (scene ? sortLines(scene.scene_lines) : []), [scene]);
   const castByRole = useMemo(() => Object.fromEntries((dub?.dub_cast ?? []).map((c) => [c.role_id, c])), [dub]);
   const recorded = useMemo(() => new Set((dub?.dub_recordings ?? []).map((r) => r.line_id)), [dub]);
+  const textByLine = useMemo(() => Object.fromEntries((dub?.dub_line_texts ?? []).map((t) => [t.line_id, t.text])), [dub]);
+  const cardByLine = useMemo(() => Object.fromEntries((dub?.dub_cards ?? []).map((c) => [c.line_id, c.card])), [dub]);
 
   const loadComments = useCallback(async () => {
     const { data } = await sb()
@@ -125,6 +134,8 @@ export default function DubView({ id }: { id: string }) {
     const items = dub.dub_recordings
       .filter((r) => lineById[r.line_id])
       .map((r) => recItem(publicUrl("recordings", r.audio_path), r.offset_time, lineById[r.line_id], r.line_id, isEffect(r.effect) ? r.effect : undefined));
+    const foley = Array.isArray(dub.dub_foley) ? dub.dub_foley[0] : dub.dub_foley;
+    if (foley) items.push({ url: publicUrl("recordings", foley.audio_path), at: foley.offset_time, from: 0, key: "foley" });
     itemsRef.current = items;
     const p = new DubPlayer(videoRef.current, { originalVolume: dub.scenes.original_volume });
     playerRef.current = p;
@@ -267,6 +278,18 @@ export default function DubView({ id }: { id: string }) {
   return (
     <main className="mx-auto grid max-w-6xl gap-6 px-4 py-6 pb-24 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <section className="flex min-w-0 flex-col gap-4">
+        {dub.mode === "zincir" ? (
+          <ChainView
+            scene={scene}
+            order={dub.chain ?? dub.dub_participants.map((p) => p.user_id)}
+            recs={dub.dub_recordings}
+            people={Object.fromEntries(
+              dub.dub_participants
+                .filter((p) => p.profiles)
+                .map((p) => [p.user_id, { name: p.profiles!.display_name, color: p.profiles!.color, avatar_path: p.profiles!.avatar_path, frame: p.profiles!.equipped?.frame }]),
+            )}
+          />
+        ) : (
         <div className="panel overflow-hidden">
           <div className="relative bg-black">
             <video
@@ -283,12 +306,22 @@ export default function DubView({ id }: { id: string }) {
                 {active.map((l) => {
                   const r = roleById[l.role_id];
                   const who = castByRole[l.role_id]?.profiles?.display_name;
+                  const rewrite = textByLine[l.id];
+                  const card = cardInfo(cardByLine[l.id]);
                   return (
-                    <span key={l.id} className="inline-flex items-center gap-1.5 rounded bg-black/80 px-2.5 py-1 text-[13px]">
-                      <span className="size-1.5 rounded-full" style={{ background: r?.color }} />
-                      {who && <span className="font-medium">{who}</span>}
-                      <span className="text-fg-2">{r?.name}</span>
-                      {!recorded.has(l.id) && <span className="text-muted">· kayıt yok</span>}
+                    <span key={l.id} className="flex flex-col items-center gap-1">
+                      {rewrite && <span className="max-w-xl rounded bg-black/80 px-3 py-1 text-center text-base font-medium sm:text-lg">{rewrite}</span>}
+                      <span className="inline-flex items-center gap-1.5 rounded bg-black/80 px-2.5 py-1 text-[13px]">
+                        <span className="size-1.5 rounded-full" style={{ background: r?.color }} />
+                        {who && <span className="font-medium">{who}</span>}
+                        <span className="text-fg-2">{r?.name}</span>
+                        {card && (
+                          <span className="text-accent">
+                            · {card.emoji} {card.name}
+                          </span>
+                        )}
+                        {!recorded.has(l.id) && <span className="text-muted">· kayıt yok</span>}
+                      </span>
                     </span>
                   );
                 })}
@@ -316,11 +349,14 @@ export default function DubView({ id }: { id: string }) {
           </div>
         </div>
 
+        )}
+
         {/* Başlık + aksiyonlar */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{scene.title}</h1>
             <p className="mt-1 text-sm text-muted">
+              {dub.mode && dub.mode !== "klasik" && <span className="mr-1.5 rounded bg-accent/10 px-1.5 py-0.5 text-xs font-medium text-accent">{modeName(dub.mode)}</span>}
               {people.map((p) => p.profiles!.display_name).join(", ")} · {timeAgo(dub.created_at)}
             </p>
             <CreatorTag creator={scene.creator} size="md" className="mt-2" />
@@ -343,7 +379,7 @@ export default function DubView({ id }: { id: string }) {
             <Button icon={copied ? <Check className="size-4 text-ok" /> : <Share2 className="size-4" />} onClick={share}>
               {copied ? "Link kopyalandı" : "Paylaş"}
             </Button>
-            {exp.kind === "working" ? (
+            {dub.mode === "zincir" ? null : exp.kind === "working" ? (
               <Button icon={<Square className="size-4" />} onClick={() => abortRef.current?.abort()}>
                 {exp.phase === "rendering" ? `%${Math.round(exp.progress * 100)}` : "Hazırlanıyor"}
               </Button>
@@ -439,6 +475,7 @@ export default function DubView({ id }: { id: string }) {
       </section>
 
       <aside className="flex flex-col gap-4">
+        {dub.mode !== "zincir" && (
         <div className="panel">
           <div className="panel-head">
             <h2 className="text-sm font-medium">Seslendirenler</h2>
@@ -469,6 +506,29 @@ export default function DubView({ id }: { id: string }) {
             })}
           </ul>
         </div>
+        )}
+        {(() => {
+          const nameOfUser = (uid: string | null) => dub.dub_participants.find((p) => p.user_id === uid)?.profiles?.display_name;
+          const writers = [...new Set((dub.dub_line_texts ?? []).map((t) => nameOfUser(t.author)).filter(Boolean))];
+          const f = Array.isArray(dub.dub_foley) ? dub.dub_foley[0] : dub.dub_foley;
+          if (!writers.length && !f) return null;
+          return (
+            <div className="panel flex flex-col gap-1.5 p-4 text-sm">
+              {writers.length > 0 && (
+                <p>
+                  <span className="text-muted">Senaryo: </span>
+                  {writers.join(", ")}
+                </p>
+              )}
+              {f && (
+                <p>
+                  <span className="text-muted">Foley: </span>
+                  {nameOfUser(f.user_id) ?? "?"}
+                </p>
+              )}
+            </div>
+          );
+        })()}
         <VotePanel dubId={id} scene={scene} me={me.status === "in" ? me.user.id : null} />
         {admin && (
           <Button
