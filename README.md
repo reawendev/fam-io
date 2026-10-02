@@ -53,6 +53,7 @@ Ekran görüntüleri: docs/ klasörüne koyup aşağıdaki satırların yorumunu
 | 🏅 **Rozetler** | 30'a yakın otomatik rozet ve Kurucu, Erken Üye gibi özel rozetler; en iyileri isminin yanında. Rozet kazanınca, level atlayınca kutlama animasyonu. |
 | 🛡️ **Oda yönetimi** | Oda sahibi oyuncu çıkarabilir, odayı kilitleyebilir, sahipliği devredebilir. Kimin bağlantısı koptuğu canlı görünür; boşalan oda kendiliğinden kapanır. |
 | 🚪 **Aktif odalar** | Herkese açık lobiler `/odalar`'da listelenir, tek tıkla katılınır. Gizli lobiler sadece kod / linkle. |
+| ✉️ **Davetler** | Lobide site üyelerini ara ve davet et; davet edilen her sayfada anında bildirim alır, tek tıkla katılır. |
 | 🧭 **İlk giriş rehberi** | 3 adımlık kısa tur ve kimseyi beklemeden "tek başına prova". |
 | 🧰 **Yönetim paneli** | Kurucu rozeti olanlara: üyelerin XP'si ve bakiyesi, eşya verme, plaket tasarımı, mağaza fiyatları, oda kapatma, rozet verme, Discord ayarı, sahne/dublaj/yorum silme, depolama temizliği. |
 | 🗜️ **Otomatik sıkıştırma** | Yüklenen videolar tarayıcıda 720p'ye küçültülür; ücretsiz depolama çok daha geç dolar. |

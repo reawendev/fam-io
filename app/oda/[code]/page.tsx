@@ -20,6 +20,7 @@ import PartyGame from "@/components/room/PartyGame";
 import StoryGame from "@/components/room/StoryGame";
 import PartyFinale from "@/components/room/PartyFinale";
 import { needsScene } from "@/lib/modes";
+import { setActiveRoom } from "@/lib/roomSession";
 import { modeName } from "@/lib/modes";
 
 function phasesFor(mode?: GameMode): { id: RoomStatus; label: string }[] {
@@ -90,29 +91,20 @@ export default function OdaPage() {
     setTimeout(() => setNotes((n) => n.filter((x) => !ids.includes(x.id))), 4500);
   }, [r.players, r.room, r.me]);
 
-  // Uygulama içinde başka sayfaya geçince lobideki / finaldeki odadan ayrıl.
-  // (Oyun sürerken yanlışlıkla çıkan karakterini kaybetmesin: o zaman sunucu 5 dk sonra düşürür.)
-  const statusRef = useRef(r.room?.status);
-  statusRef.current = r.room?.status;
-  const roomIdRef = useRef(r.room?.id);
-  roomIdRef.current = r.room?.id;
+  // Açık oda kaydı: RoomGuard sayfa değişince / sekme kapanınca odayı bırakır
+  const roomId = r.room?.id;
+  const roomStatus = r.room?.status;
+  const roomCode = r.room?.code;
   useEffect(() => {
-    const path = `/oda/${code}`.toLowerCase();
-    return () => {
-      const id = roomIdRef.current;
-      const st = statusRef.current;
-      if (!id || leaving.current) return;
-      setTimeout(() => {
-        if (location.pathname.toLowerCase().startsWith(path)) return; // aynı sayfa (yeniden bağlanma)
-        if (st === "lobby" || st === "finale") sb().rpc("leave_room", { p_room: id }).then(() => {});
-      }, 300);
-    };
-  }, [code]);
+    if (!roomId || !roomStatus || !roomCode || leaving.current) return;
+    setActiveRoom({ id: roomId, code: roomCode, status: roomStatus, inRoom });
+  }, [roomId, roomStatus, roomCode, inRoom]);
 
   async function leave() {
     const st = r.room?.status;
     if ((st === "recording" || st === "writing") && !confirm("Oyun sürüyor. Odadan çıkarsan karakterlerin oda sahibine geçer. Çıkılsın mı?")) return;
     leaving.current = true;
+    setActiveRoom(null);
     if (r.room) await sb().rpc("leave_room", { p_room: r.room.id });
     router.push("/odalar");
   }

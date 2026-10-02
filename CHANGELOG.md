@@ -1,5 +1,21 @@
 # Değişiklik notları
 
+## 0.9.1 — 3 Ekim 2026
+
+### Davetler
+- Lobide **Davet et** (+): site üyelerini ara, tıkla, davet gitsin. Davet edilen sitenin hangi sayfasındaysa sağ üstte anında bildirim çıkar (kısa zil sesiyle): **Katıl** ya da **Reddet**. Davetle gelen, oda kilitli olsa bile katılır.
+- Davet edilenler lobide gri, kesik çizgili ve saat işaretiyle görünür; katılınca renklenir. Davet eden ya da oda sahibi daveti geri çekebilir. Davetler 30 dakika geçerli, oyun başlayınca gönderilemez.
+
+### Lobide oyuncular
+- Oyuncu listesi yeni tasarımda: avatarlar yan yana, altında isim ve karakter renkleri; oda sahibinde taç, çevrimiçi / bağlantı yok noktası, bağlantısı kopan gri. Avatara tıklayınca: profili gör, (oda sahibiysen) oda sahibi yap / odadan çıkar.
+
+### Düzeltme: kapatılan odalar açık görünüyordu
+- Oda kuran sayfayı kapatınca ya da geri gidince oda Aktif odalarda asılı kalıyordu (yeni odalar 10 dakika boyunca temizlenmiyordu).
+- Artık: uygulama içinde başka sayfaya geçince (geri tuşu dahil) lobideki odadan hemen ayrılırsın; sekmeyi / tarayıcıyı kapatınca 15 saniye içinde düşersin (sayfayı yenilediysen kalırsın). Aktif odalar sadece son 50 saniyede birinin bağlı olduğu odaları gösterir.
+
+### Güncelleme
+- Supabase SQL Editor'da `supabase/migrations/011_davetler_oda_kapanma.sql` dosyasını bir kez çalıştır (010'dan sonra).
+
 ## 0.9.0 — 3 Ekim 2026
 
 ### Odalar

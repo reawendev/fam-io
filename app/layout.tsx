@@ -4,6 +4,8 @@ import { GeistMono } from "geist/font/mono";
 import SiteHeader from "@/components/SiteHeader";
 import RewardToaster from "@/components/RewardToaster";
 import Onboarding from "@/components/Onboarding";
+import RoomGuard from "@/components/RoomGuard";
+import InviteToaster from "@/components/InviteToaster";
 import "./globals.css";
 
 const siteUrl =
@@ -27,6 +29,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <SiteHeader />
         <div className="flex-1">{children}</div>
         <RewardToaster />
+        <InviteToaster />
+        <RoomGuard />
         <Onboarding />
         <footer className="border-t border-line">
           <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 text-xs text-muted sm:px-6">

@@ -36,6 +36,39 @@ export async function ensureUser(): Promise<User> {
   throw new Error("Devam etmek için giriş yapman gerekiyor.");
 }
 
+// Sayfa kapanırken (pagehide) await edilemez; son oturum anahtarını sakla, isteği keepalive ile gönder
+let lastToken: string | null = null;
+let tokenWatch = false;
+export function rememberToken() {
+  if (typeof window === "undefined") return;
+  if (!tokenWatch) {
+    tokenWatch = true;
+    sb().auth.onAuthStateChange((_e, session) => {
+      lastToken = session?.access_token ?? null;
+    });
+  }
+  sb()
+    .auth.getSession()
+    .then(({ data }) => {
+      lastToken = data.session?.access_token ?? null;
+    });
+}
+
+/** Sayfa kapanırken bile gitmesi gereken RPC (fetch keepalive). Cevap beklenmez. */
+export function rpcBeacon(fn: string, args: Record<string, unknown>) {
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+  if (!url || !key || !lastToken) return;
+  try {
+    fetch(`${url}/rest/v1/rpc/${fn}`, {
+      method: "POST",
+      keepalive: true,
+      headers: { apikey: key, Authorization: `Bearer ${lastToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(args),
+    }).catch(() => {});
+  } catch {}
+}
+
 export type Bucket = "scenes" | "recordings" | "avatars" | "sounds";
 
 /** Herkese açık dosya adresi (istemci gerektirmez; sunucuda da çalışır) */
@@ -68,6 +101,7 @@ export function serverOffset(): Promise<number> {
 }
 
 const MIGRATION_HINT: [RegExp, string][] = [
+  [/invite_to_room|cancel_invite|respond_invite|my_invites|room_invites|room_away/i, "011_davetler_oda_kapanma.sql"],
   [/room_ping|room_presence|set_room_public|list_active_rooms|is_public|admin_adjust_|admin_set_xp|admin_give_item|admin_take_item|admin_update_|admin_user_detail|admin_list_rooms|admin_close_room|admin_save_plaque|admin_delete_plaque|shop_items\.meta|column .*meta/i, "010_odalar_yonetim_plaket.sql"],
   [/admin_save_sound|admin_clear_sound|admin_delete_sound|audio_path|emoji|sounds/i, "009_isim_efektleri_ses_dosyalari.sql"],
   [/party_|scene_request|showcase|_story|board|shop_items_kind_check/i, "008_parti_istek_vitrin.sql"],

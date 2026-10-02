@@ -1,10 +1,11 @@
 "use client";
 
-import { Bell, BellOff, Crown, Dices, EyeOff, Globe, Link2, Lock, LockOpen, LogOut, Mic, MicOff, Shuffle, Swords, UserX, Volume2, WifiOff } from "lucide-react";
+import { Bell, BellOff, Dices, EyeOff, Globe, Link2, Lock, LockOpen, LogOut, Mic, MicOff, Shuffle, Swords, Volume2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Avatar, Button, cx, IconButton, Notice, RoleTag, Swatch, UserName } from "@/components/ui";
+import { Avatar, Button, cx, IconButton, Notice, Swatch } from "@/components/ui";
 import ModePicker from "./ModePicker";
+import RoomMembers from "./RoomMembers";
 import { playEntrance } from "@/lib/shop";
 import { MODES, needsScene } from "@/lib/modes";
 import { MODE_ICON } from "./ModePicker";
@@ -334,54 +335,22 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
               </span>
             )}
           </div>
-          <ul className="flex flex-col gap-1 p-2">
-            {players.map((p) => {
-              const my = assignments.filter((a) => a.user_id === p.user_id);
-              return (
-                <li key={p.user_id} className="group flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-surface-2/60">
-                  <span className={cx("relative inline-flex transition-opacity", p.online === false && "opacity-45 grayscale")}>
-                    <Avatar name={p.nickname} color={p.color} path={p.avatar_path} frame={p.equipped?.frame} />
-                    {p.online !== undefined && (
-                      <span
-                        className={cx("absolute -right-0.5 -bottom-0.5 z-10 size-2.5 rounded-full ring-2 ring-surface", p.online ? "bg-ok" : "bg-muted")}
-                        aria-label={p.online ? "Çevrimiçi" : "Bağlantı yok"}
-                      />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className={cx("flex items-center gap-1.5 text-sm", p.online === false && "opacity-60")}>
-                      <UserName name={p.nickname} fx={p.equipped?.name} className="truncate" />
-                      {p.user_id === me && <span className="text-xs text-muted">(sen)</span>}
-                      {p.user_id === room.host_id && <Crown className="size-3.5 text-accent" aria-label="Oda sahibi" />}
-                    </span>
-                    {p.online === false && (
-                      <span className="flex items-center gap-1 text-[11px] text-muted">
-                        <WifiOff className="size-3" /> Bağlantı yok · birazdan odadan düşer
-                      </span>
-                    )}
-                  </span>
-                  <span className="flex flex-wrap justify-end gap-1">
-                    {room.foley_user === p.user_id && <span className="text-[11px] text-fg-2">foley</span>}
-                    {rolesMode && my.map((a) => {
-                      const role = roles.find((r) => r.id === a.role_id);
-                      return role ? <RoleTag key={a.role_id} name={role.name} color={role.color} className="h-5 px-1.5 text-[11px]" /> : null;
-                    })}
-                    {rolesMode && !withRole.has(p.user_id) && room.foley_user !== p.user_id && <span className="text-xs text-muted">seçmedi</span>}
-                  </span>
-                  {isHost && p.user_id !== me && (
-                    <span className="flex shrink-0 gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
-                      <IconButton label="Oda sahibi yap" className="size-7" disabled={!!busy} onClick={() => makeHost(p.user_id)}>
-                        <Crown className="size-3.5" />
-                      </IconButton>
-                      <IconButton label="Odadan çıkar" className="size-7 hover:text-red-300" disabled={!!busy} onClick={() => kick(p.user_id)}>
-                        <UserX className="size-3.5" />
-                      </IconButton>
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          <RoomMembers
+            room={room}
+            me={me}
+            players={players}
+            assignments={rolesMode ? assignments : []}
+            roles={roles}
+            isHost={isHost}
+            busy={!!busy}
+            onKick={kick}
+            onMakeHost={makeHost}
+          />
+          {rolesMode && players.some((p) => !withRole.has(p.user_id) && room.foley_user !== p.user_id) && (
+            <p className="border-t border-line px-4 py-2 text-[11px] text-muted">
+              Karakter seçmeyenler: {players.filter((p) => !withRole.has(p.user_id) && room.foley_user !== p.user_id).map((p) => p.nickname).join(", ")}
+            </p>
+          )}
         </div>
 
         <Soundboard roomId={room.id} me={me} players={players} />

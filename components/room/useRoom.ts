@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ensureUser, errMsg, sb } from "@/lib/supabase";
+import { ensureUser, errMsg, rememberToken, sb } from "@/lib/supabase";
 import { SCENE_FULL_SELECT, type Room, type RoomPlayer, type RoomRole, type SceneFull } from "@/lib/types";
 
 export function useRoom(code: string) {
@@ -126,6 +126,7 @@ export function useRoom(code: string) {
     });
 
     let stopped = false;
+    rememberToken();
     const ping = async () => {
       if (stopped) return;
       const { data, error } = await sb().rpc("room_ping", { p_room: roomId });
@@ -138,10 +139,13 @@ export function useRoom(code: string) {
     const iv = setInterval(ping, 20000);
     const onVis = () => document.visibilityState === "visible" && ping();
     document.addEventListener("visibilitychange", onVis);
+    // Geri / ileri önbelleğinden dönülünce hemen "buradayım" de
+    window.addEventListener("pageshow", ping);
     return () => {
       stopped = true;
       clearInterval(iv);
       document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pageshow", ping);
       ch.untrack().catch(() => {});
       sb().removeChannel(ch);
     };
