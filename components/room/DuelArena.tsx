@@ -156,7 +156,7 @@ export default function DuelArena({ room, scene, me, players, isHost, reload }: 
     if (!tk) return setPlaying(null);
     try {
       playerRef.current?.destroy();
-      const p = new DubPlayer(v);
+      const p = new DubPlayer(v, { originalVolume: scene.original_volume, duck: scene.scene_lines });
       playerRef.current = p;
       await p.load([recItem(publicUrl("recordings", tk.audio_path), tk.offset_time, line, tk.user_id)], null);
       p.onEnd = () => setPlaying(null);

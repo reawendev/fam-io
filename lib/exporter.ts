@@ -42,6 +42,8 @@ export async function exportDub(opts: {
   items: DubItem[];
   bgUrl: string | null;
   originalVolume: number;
+  /** Replik aralıkları: orijinal ses sadece bunlarda kısılır */
+  duck?: { start_time: number; end_time: number }[];
   maxWidth?: number;
   onPhase?: (phase: "loading" | "rendering" | "finishing") => void;
   onProgress?: (fraction: number) => void;
@@ -61,7 +63,7 @@ export async function exportDub(opts: {
   document.body.appendChild(video);
 
   const dest = c.createMediaStreamDestination();
-  const player = new DubPlayer(video, { originalVolume: opts.originalVolume, output: dest, latencyCompensation: false });
+  const player = new DubPlayer(video, { originalVolume: opts.originalVolume, duck: opts.duck, output: dest, latencyCompensation: false, volume: 1 });
 
   let raf = 0;
   let vfc = 0;

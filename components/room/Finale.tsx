@@ -7,6 +7,7 @@ import { btn, Button, cx, Notice, Progress } from "@/components/ui";
 import { refreshMe } from "@/lib/auth";
 import { errMsg, publicUrl, sb, serverOffset } from "@/lib/supabase";
 import { audioUnlocked, DubPlayer, recItem, unlockAudio, type DubItem } from "@/lib/player";
+import VolumeSlider from "@/components/VolumeSlider";
 import { downloadBlob, exportDub, exportSupported, slugify } from "@/lib/exporter";
 import { sortLines, type Recording } from "@/lib/types";
 import { isEffect } from "@/lib/effects";
@@ -75,7 +76,7 @@ export default function Finale({ room, scene, me, players, assignments, isHost, 
         setRewrites(Object.fromEntries(((tx as { line_id: string; author: string; text: string | null }[]) ?? []).map((r) => [r.line_id, r])));
         setCards(Object.fromEntries(((cd as { line_id: string; card: string }[]) ?? []).map((c) => [c.line_id, c.card])));
         itemsRef.current = items;
-        const p = new DubPlayer(videoRef.current, { originalVolume: scene.original_volume });
+        const p = new DubPlayer(videoRef.current, { originalVolume: scene.original_volume, duck: scene.scene_lines });
         playerRef.current = p;
         await p.load(items, scene.bg_audio_path ? publicUrl("scenes", scene.bg_audio_path) : null, (d, t) => !cancelled && setProgress([d, t]));
         if (p.failed.length) setError(`${p.failed.length} ses dosyası yüklenemedi; o replikler sessiz kalacak.`);
@@ -175,6 +176,7 @@ export default function Finale({ room, scene, me, players, assignments, isHost, 
         items: itemsRef.current,
         bgUrl: scene.bg_audio_path ? publicUrl("scenes", scene.bg_audio_path) : null,
         originalVolume: scene.original_volume,
+        duck: scene.scene_lines,
         signal: ac.signal,
         onPhase: (phase) => setExp((s) => ({ kind: "working", phase, progress: s.kind === "working" ? s.progress : 0 })),
         onProgress: (f) => setExp((s) => (s.kind === "working" ? { ...s, progress: f } : s)),
@@ -268,6 +270,7 @@ export default function Finale({ room, scene, me, players, assignments, isHost, 
         {loaded && unlocked && (
           <div className="flex items-center gap-3 border-t border-line px-4 py-2.5">
             <Progress value={dur ? pos / dur : 0} tone="fg" />
+            <VolumeSlider onChange={(v) => playerRef.current?.setVolume(v)} />
           </div>
         )}
       </div>

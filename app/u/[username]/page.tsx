@@ -11,7 +11,8 @@ import { squareAvatar } from "@/lib/image";
 import { refreshMe, useMe } from "@/lib/auth";
 import { compatLabel, compatPercent, currentStreak, levelInfo, levelTitle, streakDoneToday } from "@/lib/progress";
 import { ensureUser, errMsg, publicUrl, sb } from "@/lib/supabase";
-import { bannerClass, PLAQUES } from "@/lib/shop";
+import { bannerClass } from "@/lib/shop";
+import { EquippedPlaque } from "@/components/EquippedPlaque";
 import Guestbook from "@/components/Guestbook";
 import { fetchUserGames, GameCard, inShowcase, PinButton, type GameItem } from "@/components/Showcase";
 import VoiceRecorder from "@/components/VoiceRecorder";
@@ -204,12 +205,10 @@ export default function ProfilePage() {
               {p.bio && <p className="mt-2 max-w-lg text-sm text-fg-2">{p.bio}</p>}
             </div>
 
-            {(badges?.some((b) => b.id === "kurucu" && b.earned) || (p.equipped?.plaque && PLAQUES[p.equipped.plaque]) || myCompat) && (
+            {(badges?.some((b) => b.id === "kurucu" && b.earned) || p.equipped?.plaque || myCompat) && (
               <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                 {badges?.some((b) => b.id === "kurucu" && b.earned) && <AwardPlaque eyebrow="FAM-IO · ÖZEL ROZET" title="Kurucu" tone="gold" />}
-                {p.equipped?.plaque && PLAQUES[p.equipped.plaque] && (
-                  <AwardPlaque eyebrow="FAM-IO · PLAKET" title={PLAQUES[p.equipped.plaque].title} tone={PLAQUES[p.equipped.plaque].tone} />
-                )}
+                {p.equipped?.plaque && <EquippedPlaque id={p.equipped.plaque} />}
                 {myCompat && (
                   <div className="flex items-center gap-3 rounded-lg border border-line bg-bg px-3 py-2">
                     <Sparkles className="size-4 text-accent" />

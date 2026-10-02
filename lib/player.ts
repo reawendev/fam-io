@@ -92,9 +92,50 @@ async function decode(url: string): Promise<AudioBuffer> {
   });
 }
 
+/** Dinleyicinin ses seviyesi (0–1.5), cihazda hatırlanır */
+export function getListenerVolume(): number {
+  try {
+    const v = parseFloat(localStorage.getItem("famio.volume") ?? "");
+    return isFinite(v) ? Math.max(0, Math.min(1.5, v)) : 1;
+  } catch {
+    return 1;
+  }
+}
+export function saveListenerVolume(v: number) {
+  try {
+    localStorage.setItem("famio.volume", String(v));
+  } catch {}
+}
+
+/** Replik aralıkları → orijinal sesin kısılacağı aralıklar (birleşik, sıralı) */
+export function duckRanges(lines: { start_time: number; end_time: number }[], pre = DUCK_PRE, post = DUCK_POST) {
+  const rs = lines
+    .map((l) => [Math.max(0, l.start_time - pre), l.end_time + post] as [number, number])
+    .sort((a, b) => a[0] - b[0]);
+  const out: [number, number][] = [];
+  for (const r of rs) {
+    const last = out[out.length - 1];
+    if (last && r[0] <= last[1] + 0.25) last[1] = Math.max(last[1], r[1]);
+    else out.push([...r]);
+  }
+  return out;
+}
+const DUCK_PRE = 0.08;
+const DUCK_POST = 0.12;
+const DUCK_RAMP = 0.06;
+
 export type DubPlayerOptions = {
-  /** Orijinal video sesinin seviyesi (0 = kapalı) */
+  /** Orijinal video sesinin seviyesi (0 = kapalı, 1 = olduğu gibi, 2 = iki kat) */
   originalVolume?: number;
+  /**
+   * Replik aralıkları: orijinal ses sadece bu aralıklarda kısılır, geri kalanında olduğu gibi çalar.
+   * Verilmezse orijinal ses baştan sona originalVolume seviyesinde çalar.
+   */
+  duck?: { start_time: number; end_time: number }[];
+  /** Replik anında orijinal sesin seviyesi (varsayılan 0: tamamen kısık) */
+  duckLevel?: number;
+  /** Genel ses seviyesi (varsayılan: dinleyicinin kayıtlı seviyesi) */
+  volume?: number;
   /** Ses çıkışı (varsayılan: hoparlör) */
   output?: AudioNode;
   /** Hoparlör gecikmesini videoya yansıt (dışa aktarımda kapalı olmalı) */
@@ -113,7 +154,10 @@ export class DubPlayer {
   private endAt: number | null = null;
   private master: GainNode | null = null;
   private voiceBus: GainNode | null = null;
-  private opts: Required<Omit<DubPlayerOptions, "output">> & { output?: AudioNode };
+  private origGain: GainNode | null = null;
+  private ranges: [number, number][] | null = null;
+  private vol = 1;
+  private opts: { originalVolume: number; latencyCompensation: boolean; duckLevel: number; output?: AudioNode };
   running = false;
   duration = 0;
   onTick?: (pos: number) => void;
@@ -122,7 +166,23 @@ export class DubPlayer {
 
   constructor(video: HTMLVideoElement, opts: DubPlayerOptions = {}) {
     this.video = video;
-    this.opts = { originalVolume: 0, latencyCompensation: true, ...opts };
+    this.opts = {
+      originalVolume: opts.originalVolume ?? 0,
+      latencyCompensation: opts.latencyCompensation ?? true,
+      duckLevel: opts.duckLevel ?? 0,
+      output: opts.output,
+    };
+    this.ranges = opts.duck?.length ? duckRanges(opts.duck) : null;
+    this.vol = opts.volume ?? (opts.output ? 1 : getListenerVolume());
+  }
+
+  /** Genel ses seviyesi (seslendirmeler + orijinal ses) */
+  setVolume(v: number) {
+    this.vol = Math.max(0, Math.min(1.5, v));
+    if (this.master) this.master.gain.value = this.vol;
+    if (this.origGain && !this.running) this.origGain.gain.value = this.opts.originalVolume * this.vol;
+    // Çalarken: planlanmış kısmaları yeni seviyeyle baştan kur
+    if (this.running) this.scheduleDuck(this.position());
   }
 
   async load(items: DubItem[], bgUrl: string | null, onProgress?: (done: number, total: number) => void) {
@@ -182,6 +242,7 @@ export class DubPlayer {
     const c = audioCtx();
     if (!this.master) {
       this.master = c.createGain();
+      this.master.gain.value = this.vol;
       this.master.connect(this.opts.output ?? c.destination);
       const comp = c.createDynamicsCompressor();
       comp.threshold.value = -18;
@@ -195,11 +256,50 @@ export class DubPlayer {
     }
     if (this.opts.originalVolume > 0) {
       const g = mediaGain(this.video, this.opts.output);
-      if (g) g.gain.value = this.opts.originalVolume;
+      this.origGain = g;
+      if (g) {
+        g.gain.cancelScheduledValues(0);
+        g.gain.value = this.opts.originalVolume * this.vol;
+      }
       this.video.muted = false;
       this.video.volume = 1;
     } else {
+      this.origGain = null;
       this.video.muted = true;
+    }
+  }
+
+  /**
+   * Orijinal sesi replik aralıklarında kıs. Zamanlar ses saatinde: video saniyesi t,
+   * (startAt + gecikme + t − startPos) anında hoparlöre ulaşır.
+   */
+  private scheduleDuck(fromPos: number) {
+    const g = this.origGain;
+    if (!g) return;
+    const c = audioCtx();
+    const base = this.opts.originalVolume * this.vol;
+    const low = this.opts.duckLevel * base;
+    const now = c.currentTime;
+    const t0 = this.startAt + this.latency() - this.startPos; // video saniyesi → ses saati
+    g.gain.cancelScheduledValues(0);
+    g.gain.setValueAtTime(base, now);
+    if (!this.ranges) return;
+    let last = now;
+    for (const [a, b] of this.ranges) {
+      if (b <= fromPos) continue;
+      if (this.endAt != null && a >= this.endAt) break;
+      const ta = t0 + a;
+      const tb = t0 + b;
+      if (tb <= now) continue;
+      if (ta - DUCK_RAMP <= now) {
+        g.gain.setValueAtTime(low, Math.max(now, last));
+      } else {
+        g.gain.setValueAtTime(base, Math.max(last, ta - DUCK_RAMP));
+        g.gain.linearRampToValueAtTime(low, ta);
+      }
+      g.gain.setValueAtTime(low, Math.max(tb, last));
+      g.gain.linearRampToValueAtTime(base, tb + DUCK_RAMP * 1.5);
+      last = tb + DUCK_RAMP * 1.5;
     }
   }
 
@@ -246,6 +346,7 @@ export class DubPlayer {
     };
     for (const it of this.items) sched(it.buf, it.at, it.from, it.to, this.voiceBus!, true);
     if (this.bg) sched(this.bg, 0, 0, this.bg.duration, this.master!, false);
+    this.scheduleDuck(startPos);
 
     this.video.pause();
     this.video.playbackRate = 1;
@@ -291,6 +392,10 @@ export class DubPlayer {
     this.sources = [];
     this.video.pause();
     this.video.playbackRate = 1;
+    if (this.origGain) {
+      this.origGain.gain.cancelScheduledValues(0);
+      this.origGain.gain.value = this.opts.originalVolume * this.vol;
+    }
   }
 
   destroy() {
@@ -307,7 +412,10 @@ export class DubPlayer {
  */
 export function playOriginal(video: HTMLVideoElement, from: number, to: number, onEnd?: () => void): () => void {
   const g = mediaGain(video);
-  if (g) g.gain.value = 1;
+  if (g) {
+    g.gain.cancelScheduledValues(0);
+    g.gain.value = getListenerVolume();
+  }
   video.muted = false;
   video.volume = 1;
   let raf = 0;

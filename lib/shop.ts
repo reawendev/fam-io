@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { audioCtx } from "./player";
 import { publicUrl, sb } from "./supabase";
 import type { Equipped } from "./types";
-import type { PlaqueTone } from "@/components/AwardPlaque";
+import { PLAQUE_TONES, type PlaqueColors, type PlaqueTone } from "@/components/AwardPlaque";
 
 /**
  * XP mağazası kozmetikleri. Fiyatlar ve sahiplik veritabanında (shop_items, user_items);
@@ -11,7 +12,17 @@ import type { PlaqueTone } from "@/components/AwardPlaque";
  */
 
 export type ShopKind = "frame" | "name" | "plaque" | "sound" | "banner" | "board";
-export type ShopItem = { id: string; kind: ShopKind; name: string; price: number; sort: number; audio_path?: string | null; emoji?: string | null };
+export type ShopItem = {
+  id: string;
+  kind: ShopKind;
+  name: string;
+  price: number;
+  sort: number;
+  audio_path?: string | null;
+  emoji?: string | null;
+  /** Plaketlerde görünüş (010): { title, eyebrow, colors } */
+  meta?: PlaqueMeta | null;
+};
 
 export const KIND_LABEL: Record<ShopKind, string> = {
   frame: "Profil çerçeveleri",
@@ -22,18 +33,67 @@ export const KIND_LABEL: Record<ShopKind, string> = {
   board: "Efekt düğmeleri",
 };
 
-/** Avatar çerçevesi sınıfı (globals.css) */
-export const frameClass = (id?: string) => (id ? `avatar-frame ${id.replace("_", "-")}` : "");
-/** İsim efekti sınıfı (globals.css) */
-export const nameClass = (id?: string) => (id ? `name-fx ${id.replace("_", "-")}` : "");
 /** Profil kapağı sınıfı (globals.css) */
 export const bannerClass = (id?: string) => (id ? `banner-preset ${id.replace("_", "-")}` : "");
 
+/** 010 öncesi / meta'sı boş plaketler için yedek görünüş */
 export const PLAQUES: Record<string, { title: string; tone: PlaqueTone }> = {
   plaque_ses: { title: "Ses Sanatçısı", tone: "silver" },
   plaque_kahkaha: { title: "Kahkaha Ustası", tone: "bronze" },
   plaque_efsane: { title: "Dublaj Efsanesi", tone: "gold" },
 };
+
+export type PlaqueMeta = { title?: string; eyebrow?: string; colors?: Partial<PlaqueColors> };
+export type PlaqueLook = { title: string; eyebrow: string; colors: PlaqueColors };
+export const PLAQUE_EYEBROW = "FAM-IO · PLAKET";
+
+/** Plaket görünüşü: veritabanındaki meta > yerleşik yedek > null */
+export function plaqueLook(id: string | undefined, meta?: PlaqueMeta | null): PlaqueLook | null {
+  if (!id) return null;
+  const fb = PLAQUES[id];
+  const title = meta?.title || fb?.title;
+  if (!title) return null;
+  const base = PLAQUE_TONES[fb?.tone ?? "gold"];
+  return { title, eyebrow: meta?.eyebrow || PLAQUE_EYEBROW, colors: { ...base, ...(meta?.colors ?? {}) } };
+}
+
+let plaquesP: Promise<Record<string, PlaqueMeta>> | null = null;
+/** Tüm plaketlerin görünüşü (önbellekli). Yönetimde değişince force ile yenile. */
+export function loadPlaques(force = false): Promise<Record<string, PlaqueMeta>> {
+  if (!plaquesP || force)
+    plaquesP = Promise.resolve(sb().from("shop_items").select("*").eq("kind", "plaque")).then(({ data }) =>
+      Object.fromEntries(((data as ShopItem[] | null) ?? []).map((it) => [it.id, it.meta ?? {}])),
+    );
+  return plaquesP;
+}
+
+/** Bir kullanıcının taktığı plaketin görünüşü */
+export function usePlaque(id: string | undefined): PlaqueLook | null {
+  const [meta, setMeta] = useState<PlaqueMeta | null | undefined>(undefined);
+  useEffect(() => {
+    if (!id) return;
+    let on = true;
+    loadPlaques()
+      .then((m) => on && setMeta(m[id] ?? null))
+      .catch(() => on && setMeta(null));
+    return () => {
+      on = false;
+    };
+  }, [id]);
+  if (!id) return null;
+  // Ürün silinmişse (meta null ve yedek yok) gösterme
+  if (meta === null && !PLAQUES[id]) return null;
+  return plaqueLook(id, meta ?? undefined);
+}
+
+/** Tek renkten uyumlu plaket paleti üret (yönetim paneli) */
+export function paletteFrom(hex: string): PlaqueColors {
+  const n = parseInt(hex.replace("#", ""), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const mix = (t: number, to: number) =>
+    "#" + [r, g, b].map((v) => Math.round(v + (to - v) * t).toString(16).padStart(2, "0")).join("");
+  return { bg1: mix(0.62, 255), bg2: mix(0.12, 255), ink: mix(0.72, 0), sub: mix(0.5, 0), line: mix(0.25, 0) };
+}
 
 export const balance = (p: { xp: number; spent?: number }) => Math.max(0, p.xp - (p.spent ?? 0));
 

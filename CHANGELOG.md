@@ -1,5 +1,41 @@
 # Değişiklik notları
 
+## 0.9.0 — 3 Ekim 2026
+
+### Odalar
+- **Kim çıktı, herkes görür:** Odadakilerin bağlantısı canlı izleniyor. Sayfayı kapatan / bağlantısı kopan oyuncu hemen gri görünür ("Bağlantı yok"), odadan ayrılan ya da çıkarılan için herkese "X odadan ayrıldı" bildirimi çıkar.
+- **Otomatik kapanma:** Herkes 20 saniyede bir sunucuya "buradayım" der. Ses vermeyen oyuncu lobide 2, oyunda 5 dakika sonra odadan düşer (telefon kilitlenince hemen gitmesin diye oyunda daha uzun). Oda boşalınca kendiliğinden silinir. Oda sahibi çıkarsa sahiplik en eski oyuncuya geçer.
+- **Odadan çık** her aşamada çalışır (üst çubuktaki "Çık"). Oyun sürerken çıkanın karakterleri oda sahibine geçer, zincir sırasından düşer. Uygulamada başka sayfaya geçince lobideki odadan otomatik ayrılırsın.
+- Bağlantısı kopup düşen biri lobiye geri dönünce otomatik tekrar katılır.
+
+### Aktif odalar (`/odalar`)
+- Yeni **Aktif odalar** sayfası; ana sayfada ve Oyna sayfasında da ilk 3 oda görünür. Mod, sahne, oyuncular, oda sahibi, durum (Lobide / Oyunda / Finalde) ve kilit bilgisi. Tıkla, katıl.
+- Oda kurarken **Herkese açık / Gizli** seçilir (tercih hatırlanır); lobide oda sahibi değiştirebilir. Gizli odalar listede görünmez, sadece kod ya da linkle girilir.
+
+### Sesler
+- **Orijinal ses artık sadece replik anlarında kısılıyor.** Videonun müziği, efektleri ve ortam sesi replik dışında olduğu gibi çalar; oyuncu konuşurken yumuşakça kısılır ve geri açılır. Final, dublaj sayfası, zincir, düello, kayıt önizlemesi ve indirilen videoda aynı.
+- Sahne editöründe orijinal ses seviyesi artık %0–200 (varsayılan %100). Ayrı müzik dosyası yüklenince orijinal ses otomatik %0 yapılır. Ayrı müzik dosyası olmayan eski sahnelerde orijinal ses açıldı.
+- Final ve dublaj sayfasında **ses seviyesi** düğmesi (cihazda hatırlanır).
+
+### Sahne editörü: kes · kırp · ses
+- Videoyu yükledikten sonra **"Kes · Kırp · Ses"**: başlangıç/bitiş seç (şu anki an düğmeleriyle), 16:9 / 4:3 / 1:1 / 9:16 kırp (konumunu kaydır), videonun kendi sesini %0–300 kıs ya da yükselt. Tarayıcıda işlenir, sunucu yok.
+- Kesince replikler yeni başlangıca göre kaydırılır, kesilen bölümdeki replikler çıkarılır.
+
+### Profil kozmetikleri
+- **Profil çerçeveleri Discord'daki avatar süslemeleri gibi:** fotoğrafın üstüne taşan hareketli çizimler. Altın defne (dönen parıltı, pırlanta), Neon (ters dönen iki kırık neon halka, titreme), Alev (titreyen alev dilleri, kıvılcımlar), Buz (kristaller, sarkıtlar, süzülen kar), Gökkuşağı (dönen renkler, bulutlar), Hologram (yanardöner halka, dönen uydu, yıldızlar). Küçük boyutlarda sadece halka görünür.
+- **İsim efektleri yenilendi** (Aurora ve Glitch aynı): Altın (metalik parlama + ışıltı), Parıltı (gümüş, harflerde çakan yıldızlar), Ateş (yukarı akan alev renkleri, nabız gibi ışıltı, kıvılcımlar), Gökkuşağı (akan renkler + ışıltı).
+
+### Yönetim paneli
+- Sekmeler: Genel · Üyeler ve XP · Mağaza · Sahneler · Odalar.
+- **Üyeler ve XP:** üye seç → XP ekle / çıkar / doğrudan ayarla, mağaza bakiyesi ver / al / sıfırla, eşya ver / geri al, görünen ad / renk / biyografi düzelt, fotoğraf / kapak / imza sesi / takılanları kaldır, son 30 XP hareketi. XP değişiklikleri liderliğe "Yönetim" olarak işlenir.
+- **Mağaza:** çerçeve, isim efekti ve kapakların adı, fiyatı, sırası.
+- **Plaketler:** tasarım ve hologram animasyonu aynı; yazı, üst yazı, 5 renk (hazır renkler, tek renkten palet üretme), fiyat panelden. Yeni plaket ekle, sil; canlı önizleme.
+- **Odalar:** gizliler dahil tüm odalar, oyuncu sayısı, son ses; tek tıkla kapat ya da sessizleri toplu kapat.
+
+### Güncelleme
+- Supabase SQL Editor'da `supabase/migrations/010_odalar_yonetim_plaket.sql` dosyasını bir kez çalıştır (009'dan sonra).
+- pg_cron açıksa boş odalar her dakika da temizlenir (açık değilse oyuncuların sinyalleri ve Aktif odalar sayfası temizliği zaten yapıyor).
+
 ## 0.8.1 — 2 Ekim 2026
 
 ### Yeni isim efektleri (mağaza)

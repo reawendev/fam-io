@@ -12,6 +12,11 @@ import { videoThumbnail } from "@/lib/image";
 import { errMsg, publicUrl, sb, type Bucket } from "@/lib/supabase";
 import type { SceneListItem } from "@/lib/types";
 import { fmtMB } from "@/lib/compress";
+import { Panel } from "@/components/admin/Panel";
+import UsersPanel from "@/components/admin/UsersPanel";
+import PlaquesPanel from "@/components/admin/PlaquesPanel";
+import ShopPanel from "@/components/admin/ShopPanel";
+import RoomsPanel from "@/components/admin/RoomsPanel";
 import { playItemSound } from "@/lib/shop";
 
 type Stats = {
@@ -28,6 +33,15 @@ type Stats = {
 type AdminUser = { id: string; username: string; display_name: string; color: string; avatar_path: string | null; xp: number; created_at: string; badges: string[] };
 type Orphan = { bucket: Bucket; name: string; bytes: number; created_at: string };
 
+type Tab = "genel" | "uyeler" | "magaza" | "sahneler" | "odalar";
+const TABS: { id: Tab; label: string }[] = [
+  { id: "genel", label: "Genel" },
+  { id: "uyeler", label: "Üyeler ve XP" },
+  { id: "magaza", label: "Mağaza" },
+  { id: "sahneler", label: "Sahneler" },
+  { id: "odalar", label: "Odalar" },
+];
+
 const FREE_STORAGE = 1024 * 1024 * 1024; // Supabase ücretsiz plan: 1 GB
 const SPECIAL = BADGES.filter((b) => b.special && b.id !== "erken_uye");
 
@@ -37,6 +51,15 @@ export default function Yonetim() {
   const [checked, setChecked] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("genel");
+  useEffect(() => {
+    const h = location.hash.slice(1) as Tab;
+    if (TABS.some((t) => t.id === h)) setTab(h);
+  }, []);
+  function pick(t: Tab) {
+    setTab(t);
+    history.replaceState(null, "", `#${t}`);
+  }
 
   const loadStats = useCallback(async () => {
     const { data, error } = await sb().rpc("admin_stats");
@@ -70,7 +93,7 @@ export default function Yonetim() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
-      <PageHeader eyebrow="Kurucu" title="Yönetim" description="Ayarlar, rozetler, sahneler ve depolama. Bu sayfayı sadece Kurucu rozeti olanlar görür." />
+      <PageHeader eyebrow="Kurucu" title="Yönetim" description="Üyeler ve XP, mağaza, plaketler, sahneler, odalar ve ayarlar. Bu sayfayı sadece Kurucu rozeti olanlar görür." />
       {error && (
         <div className="mb-6">
           <Notice>{error}</Notice>
@@ -95,7 +118,25 @@ export default function Yonetim() {
         ))}
       </section>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <nav className="sticky top-0 z-20 -mx-4 mt-6 mb-6 flex gap-1 overflow-x-auto border-b border-line bg-bg/90 px-4 backdrop-blur sm:mx-0 sm:px-0" role="tablist">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => pick(t.id)}
+            className={cx(
+              "-mb-px h-10 shrink-0 border-b-2 px-3 text-sm transition-colors",
+              tab === t.id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === "genel" && (
+      <div className="grid gap-6 lg:grid-cols-2">
         <Panel icon={<HardDrive className="size-4" />} title="Depolama" right={<span className="font-mono text-xs text-muted">{fmtMB(used)} / 1 GB</span>}>
           <div className="flex flex-col gap-3 p-4">
             <Progress value={used / FREE_STORAGE} tone={used / FREE_STORAGE > 0.85 ? "rec" : "accent"} className="h-1.5" />
@@ -114,28 +155,27 @@ export default function Yonetim() {
 
         <SettingsPanel stats={stats} onSaved={loadStats} />
       </div>
+      )}
 
-      <SoundsPanel />
-      <BadgesPanel />
-      <ScenesPanel uid={me.status === "in" ? me.user.id : ""} />
+      {tab === "uyeler" && (
+        <>
+          <UsersPanel />
+          <BadgesPanel />
+        </>
+      )}
+      {tab === "magaza" && (
+        <>
+          <ShopPanel />
+          <PlaquesPanel />
+          <SoundsPanel />
+        </>
+      )}
+      {tab === "sahneler" && <ScenesPanel uid={me.status === "in" ? me.user.id : ""} />}
+      {tab === "odalar" && <RoomsPanel onChanged={loadStats} />}
     </main>
   );
 }
 
-function Panel({ icon, title, right, children, className }: { icon: React.ReactNode; title: string; right?: React.ReactNode; children: React.ReactNode; className?: string }) {
-  return (
-    <section className={cx("panel", className)}>
-      <div className="panel-head">
-        <h2 className="flex items-center gap-2 text-sm font-medium">
-          <span className="text-muted">{icon}</span>
-          {title}
-        </h2>
-        {right}
-      </div>
-      {children}
-    </section>
-  );
-}
 
 // ------------------------------------------------------------
 function Cleanup({ onDone, hasCron }: { onDone: () => void; hasCron: boolean }) {
@@ -513,7 +553,6 @@ function ScenesPanel({ uid }: { uid: string }) {
     <Panel
       icon={<Clapperboard className="size-4" />}
       title="Sahneler"
-      className="mt-6"
       right={
         missing > 0 && (
           <Button size="sm" icon={<ImageIcon className="size-3.5" />} loading={!!thumbs} onClick={makeThumbs}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, BellOff, Crown, Dices, Link2, Lock, LockOpen, LogOut, Mic, MicOff, Shuffle, Swords, UserX, Volume2 } from "lucide-react";
+import { Bell, BellOff, Crown, Dices, EyeOff, Globe, Link2, Lock, LockOpen, LogOut, Mic, MicOff, Shuffle, Swords, UserX, Volume2, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, Button, cx, IconButton, Notice, RoleTag, Swatch, UserName } from "@/components/ui";
@@ -289,24 +289,49 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
               Oyuncular <span className="ml-1 font-mono text-xs font-normal text-muted">{players.length}</span>
             </h3>
             {isHost ? (
-              <button
-                className={cx(
-                  "inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs transition-colors",
-                  room.locked ? "bg-amber-400/10 text-amber-200" : "text-muted hover:bg-surface-2 hover:text-fg",
-                )}
-                disabled={!!busy}
-                onClick={() => rpc("set_room_lock", { p_room: room.id, p_locked: !room.locked }, "lock")}
-                title={room.locked ? "Kilidi aç: kodu bilen herkes katılabilir" : "Kilitle: yeni kimse katılamaz"}
-              >
-                {room.locked ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
-                {room.locked ? "Kilitli" : "Açık"}
-              </button>
+              <span className="flex items-center gap-1">
+                <button
+                  className={cx(
+                    "inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs transition-colors",
+                    room.is_public === false ? "bg-surface-2 text-fg-2" : "text-muted hover:bg-surface-2 hover:text-fg",
+                  )}
+                  disabled={!!busy}
+                  onClick={() => rpc("set_room_public", { p_room: room.id, p_public: room.is_public === false }, "public")}
+                  title={
+                    room.is_public === false
+                      ? "Gizli lobi: sadece kodu / linki olanlar görür. Tıkla: Aktif odalarda herkese görünsün"
+                      : "Açık lobi: Aktif odalarda herkes görür. Tıkla: gizle"
+                  }
+                >
+                  {room.is_public === false ? <EyeOff className="size-3.5" /> : <Globe className="size-3.5" />}
+                  {room.is_public === false ? "Gizli" : "Herkese açık"}
+                </button>
+                <button
+                  className={cx(
+                    "inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs transition-colors",
+                    room.locked ? "bg-amber-400/10 text-amber-200" : "text-muted hover:bg-surface-2 hover:text-fg",
+                  )}
+                  disabled={!!busy}
+                  onClick={() => rpc("set_room_lock", { p_room: room.id, p_locked: !room.locked }, "lock")}
+                  title={room.locked ? "Kilidi aç: kodu bilen herkes katılabilir" : "Kilitle: yeni kimse katılamaz"}
+                >
+                  {room.locked ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
+                  {room.locked ? "Kilitli" : "Kilitsiz"}
+                </button>
+              </span>
             ) : (
-              room.locked && (
-                <span className="inline-flex items-center gap-1 text-xs text-amber-200">
-                  <Lock className="size-3.5" /> Kilitli
-                </span>
-              )
+              <span className="flex items-center gap-2 text-xs">
+                {room.is_public === false && (
+                  <span className="inline-flex items-center gap-1 text-muted">
+                    <EyeOff className="size-3.5" /> Gizli
+                  </span>
+                )}
+                {room.locked && (
+                  <span className="inline-flex items-center gap-1 text-amber-200">
+                    <Lock className="size-3.5" /> Kilitli
+                  </span>
+                )}
+              </span>
             )}
           </div>
           <ul className="flex flex-col gap-1 p-2">
@@ -314,13 +339,26 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
               const my = assignments.filter((a) => a.user_id === p.user_id);
               return (
                 <li key={p.user_id} className="group flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-surface-2/60">
-                  <Avatar name={p.nickname} color={p.color} path={p.avatar_path} frame={p.equipped?.frame} />
+                  <span className={cx("relative inline-flex transition-opacity", p.online === false && "opacity-45 grayscale")}>
+                    <Avatar name={p.nickname} color={p.color} path={p.avatar_path} frame={p.equipped?.frame} />
+                    {p.online !== undefined && (
+                      <span
+                        className={cx("absolute -right-0.5 -bottom-0.5 z-10 size-2.5 rounded-full ring-2 ring-surface", p.online ? "bg-ok" : "bg-muted")}
+                        aria-label={p.online ? "Çevrimiçi" : "Bağlantı yok"}
+                      />
+                    )}
+                  </span>
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-1.5 text-sm">
+                    <span className={cx("flex items-center gap-1.5 text-sm", p.online === false && "opacity-60")}>
                       <UserName name={p.nickname} fx={p.equipped?.name} className="truncate" />
                       {p.user_id === me && <span className="text-xs text-muted">(sen)</span>}
                       {p.user_id === room.host_id && <Crown className="size-3.5 text-accent" aria-label="Oda sahibi" />}
                     </span>
+                    {p.online === false && (
+                      <span className="flex items-center gap-1 text-[11px] text-muted">
+                        <WifiOff className="size-3" /> Bağlantı yok · birazdan odadan düşer
+                      </span>
+                    )}
                   </span>
                   <span className="flex flex-wrap justify-end gap-1">
                     {room.foley_user === p.user_id && <span className="text-[11px] text-fg-2">foley</span>}
@@ -411,7 +449,7 @@ export default function Lobby({ room, scene, me, players, assignments, isHost, r
             className="flex items-center gap-1.5 self-start text-xs text-muted transition-colors hover:text-red-300"
             disabled={!!busy}
             onClick={async () => {
-              if (await rpc("leave_room", { p_room: room.id })) router.push("/");
+              if (await rpc("leave_room", { p_room: room.id })) router.push("/odalar");
             }}
           >
             <LogOut className="size-3.5" /> Odadan ayrıl

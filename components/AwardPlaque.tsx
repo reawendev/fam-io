@@ -9,11 +9,13 @@ import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
  */
 
 export type PlaqueTone = "gold" | "silver" | "bronze";
+/** Plaket renkleri: zemin gradyanı (bg1 → bg2), yazı, üst yazı, iç çizgi */
+export type PlaqueColors = { bg1: string; bg2: string; ink: string; sub: string; line: string };
 
-const TONES: Record<PlaqueTone, { bg: [string, string]; ink: string; sub: string; line: string }> = {
-  gold: { bg: ["#f8e9b5", "#e8c66e"], ink: "#4a3508", sub: "#7a5a17", line: "#b8913a" },
-  silver: { bg: ["#f1f1f3", "#c9ccd3"], ink: "#2c2f36", sub: "#5c616c", line: "#9aa0aa" },
-  bronze: { bg: ["#f6d7b4", "#d79a63"], ink: "#4a2a10", sub: "#7a4a22", line: "#b0743f" },
+export const PLAQUE_TONES: Record<PlaqueTone, PlaqueColors> = {
+  gold: { bg1: "#f8e9b5", bg2: "#e8c66e", ink: "#4a3508", sub: "#7a5a17", line: "#b8913a" },
+  silver: { bg1: "#f1f1f3", bg2: "#c9ccd3", ink: "#2c2f36", sub: "#5c616c", line: "#9aa0aa" },
+  bronze: { bg1: "#f6d7b4", bg2: "#d79a63", ink: "#4a2a10", sub: "#7a4a22", line: "#b0743f" },
 };
 
 const IDENTITY = "1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1";
@@ -40,11 +42,14 @@ export default function AwardPlaque({
   eyebrow,
   title,
   tone = "gold",
+  colors,
   className,
 }: {
   eyebrow: string;
   title: string;
   tone?: PlaqueTone;
+  /** Yönetim panelinden ayarlanan renkler (verilirse tone yerine) */
+  colors?: PlaqueColors;
   className?: string;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
@@ -58,7 +63,8 @@ export default function AwardPlaque({
   const [still, setStill] = useState(false);
   const enterT = useRef<Timer>(null);
   const leaveT = useRef<Timer[]>([]);
-  const t = TONES[tone];
+  const c = colors ?? PLAQUE_TONES[tone] ?? PLAQUE_TONES.gold;
+  const t = { bg: [c.bg1, c.bg2], ink: c.ink, sub: c.sub, line: c.line };
 
   useEffect(() => {
     const mq = matchMedia("(prefers-reduced-motion: reduce)");

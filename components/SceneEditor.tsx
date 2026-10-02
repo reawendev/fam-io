@@ -1,6 +1,7 @@
 "use client";
 
-import { Circle, ImageIcon, Music, Pause, Play, Plus, Save, Trash2, Upload, X } from "lucide-react";
+import { Circle, ImageIcon, Music, Pause, Play, Plus, Save, Trash2, Upload, Wand2, X } from "lucide-react";
+import VideoEditPanel from "@/components/VideoEditPanel";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { btn, Button, cx, IconButton, Notice, PageHeader, Progress, Spinner, Swatch } from "@/components/ui";
@@ -52,7 +53,8 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
   const [videoPath, setVideoPath] = useState(initial?.video_path ?? "");
   const [videoSrc, setVideoSrc] = useState(initial ? publicUrl("scenes", initial.video_path) : "");
   const [bgPath, setBgPath] = useState<string | null>(initial?.bg_audio_path ?? null);
-  const [origVol, setOrigVol] = useState(initial?.original_volume ?? 0);
+  const [origVol, setOrigVol] = useState(initial?.original_volume ?? 1);
+  const [editing, setEditing] = useState(false);
   const [duration, setDuration] = useState(initial?.duration ?? 0);
   const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
   const [tagDraft, setTagDraft] = useState("");
@@ -99,14 +101,15 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
   }, []);
 
   // ---------- Yükleme ----------
-  async function upload(original: File, kind: "video" | "bg") {
+  /** Dosyayı yükle; `raw`: sıkıştırmayı atla (düzenleyici zaten 720p üretti). Başarılıysa true. */
+  async function upload(original: File, kind: "video" | "bg", raw = false): Promise<boolean> {
     setError(null);
     setCompressNote(null);
     let file = original;
-    if (kind === "video") {
+    if (kind === "video" && !raw) {
       if (file.size > MAX_INPUT_MB * 1024 * 1024) {
         setError(`Dosya çok büyük (${fmtMB(file.size)}). Daha kısa bir klip seç.`);
-        return;
+        return false;
       }
       // Büyük / yüksek çözünürlüklü videoyu önce tarayıcıda 720p'ye küçült
       const ac = new AbortController();
@@ -119,9 +122,9 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
         else if (r.reason === "unsupported" && !compressionSupported()) setCompressNote("Bu tarayıcı sıkıştırmayı desteklemiyor; video olduğu gibi yüklendi.");
       } catch (e) {
         setCompress(null);
-        if (ac.signal.aborted) return;
+        if (ac.signal.aborted) return false;
         setError("Video sıkıştırılamadı: " + errMsg(e));
-        return;
+        return false;
       } finally {
         compressAbort.current = null;
       }
@@ -132,7 +135,7 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
         `Dosya ${fmtMB(file.size)}; en fazla ${MAX_VIDEO_MB} MB olabilir.` +
           (kind === "video" ? " Klibi kısalt ya da Chrome/Edge ile yükle (otomatik sıkıştırma için)." : ""),
       );
-      return;
+      return false;
     }
     setUploading(kind);
     try {
@@ -150,12 +153,39 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
         setThumbAt(null);
       } else {
         setBgPath(path);
+        // Ayrı müzik dosyası varsa orijinal ses genelde konuşmalı: üst üste çalmasın
+        if (origVol > 0) {
+          setOrigVol(0);
+          setCompressNote("Ayrı müzik dosyası yüklendiği için orijinal video sesi %0 yapıldı. İstersen sağdan açabilirsin.");
+        }
       }
+      return true;
     } catch (e) {
       setError("Yükleme başarısız: " + errMsg(e));
+      return false;
     } finally {
       setUploading(null);
     }
+  }
+
+  /** Düzenlenmiş videoyu yükle; replikleri yeni başlangıca kaydır, kesilenleri at */
+  async function applyEdit(file: File, cut: { start: number; end: number }) {
+    const ok = await upload(file, "video", true);
+    if (!ok) throw new Error("Yükleme başarısız");
+    const len = cut.end - cut.start;
+    const moved = lines
+      .map((l) => ({ ...l, start_time: +(l.start_time - cut.start).toFixed(2), end_time: +(l.end_time - cut.start).toFixed(2) }))
+      .filter((l) => l.end_time > 0.2 && l.start_time < len - 0.2)
+      .map((l) => ({ ...l, start_time: Math.max(0, l.start_time), end_time: Math.min(+len.toFixed(2), l.end_time) }));
+    const lost = lines.length - moved.length;
+    setLines(sortLines(moved as SceneLine[]));
+    setDuration(+len.toFixed(2));
+    setCompressNote(
+      `Video düzenlendi (${fmtMB(file.size)}).` +
+        (cut.start > 0.05 && lines.length ? ` Replikler ${cut.start.toFixed(1)} sn öne kaydırıldı.` : "") +
+        (lost ? ` Kesilen bölümdeki ${lost} replik çıkarıldı.` : "") +
+        " Kaydetmeyi unutma.",
+    );
   }
 
   // ---------- Roller ----------
@@ -432,6 +462,15 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* SOL: video + zaman çizelgesi + replikler */}
         <div className="flex min-w-0 flex-col gap-4">
+          {editing && videoSrc && (
+            <VideoEditPanel
+              src={videoSrc}
+              lineCount={lines.length}
+              dubCount={initial?.dub_count ?? 0}
+              onApply={applyEdit}
+              onClose={() => setEditing(false)}
+            />
+          )}
           {!videoSrc ? (
             <label className="panel flex aspect-video cursor-pointer flex-col items-center justify-center gap-3 border-dashed text-center transition-colors hover:border-line-strong hover:bg-surface-2">
               <span className="flex size-11 items-center justify-center rounded-lg border border-line bg-surface-2">
@@ -754,6 +793,11 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
               </div>
             )}
             {videoSrc && (
+              <Button size="sm" icon={<Wand2 className="size-3.5" />} onClick={() => setEditing(true)} disabled={!!uploading || !!compress || editing}>
+                Kes · Kırp · Ses
+              </Button>
+            )}
+            {videoSrc && (
               <label className={btn("secondary", "sm", "cursor-pointer")}>
                 {uploading === "video" || compress ? <Spinner /> : <Upload className="size-3.5" />}
                 {compress ? `Sıkıştırılıyor %${Math.round(compress.progress * 100)}` : "Videoyu değiştir"}
@@ -812,23 +856,39 @@ export default function SceneEditor({ initial }: { initial?: SceneFull }) {
           </div>
 
           <div className="panel flex flex-col gap-4 p-4">
-            <h2 className="text-sm font-medium">Finaldeki arka plan sesi</h2>
+            <h2 className="text-sm font-medium">Finaldeki ses</h2>
             <div>
               <div className="flex items-center justify-between text-[13px]">
                 <span className="text-fg-2">Orijinal video sesi</span>
-                <span className="font-mono text-xs text-muted">{Math.round(origVol * 100)}%</span>
+                <span className="font-mono text-xs text-muted">%{Math.round(origVol * 100)}</span>
               </div>
               <input
                 type="range"
                 min={0}
-                max={1}
+                max={2}
                 step={0.05}
                 value={origVol}
                 onChange={(e) => setOrigVol(+e.target.value)}
                 className="mt-2 w-full"
               />
-              <p className="mt-1 text-xs leading-relaxed text-muted">
-                Klipte orijinal konuşmalar varsa 0 bırak. Video zaten konuşmasızsa açabilirsin.
+              <div className="mt-1 flex flex-wrap gap-1">
+                {[0, 0.5, 1, 1.5, 2].map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setOrigVol(v)}
+                    className={cx(
+                      "h-6 rounded-md border px-2 font-mono text-[11px] transition-colors",
+                      Math.abs(origVol - v) < 0.01 ? "border-accent/60 bg-accent/10 text-fg" : "border-line text-muted hover:text-fg",
+                    )}
+                  >
+                    %{v * 100}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-muted">
+                Videonun kendi sesi (müzik, efekt, ortam) replik dışında olduğu gibi çalar; <b className="font-medium text-fg-2">sadece replik anlarında kısılır</b> ve yerine oyuncuların sesi gelir.
+                {bgPath ? " Ayrı müzik dosyası yüklediysen bunu 0 yap; yoksa ikisi üst üste çalar." : ""}
               </p>
             </div>
             <div className="border-t border-line pt-4">

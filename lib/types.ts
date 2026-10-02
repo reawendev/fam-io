@@ -67,6 +67,8 @@ export type Room = {
     topic?: string;
   };
   foley_user?: string | null;
+  /** Açık lobi: Aktif odalar listesinde görünür (010) */
+  is_public?: boolean;
   created_at: string;
 };
 
@@ -82,6 +84,8 @@ export type RoomPlayer = {
   username?: string;
   voice_path?: string | null;
   equipped?: Equipped;
+  /** Realtime Presence: sayfası şu an açık mı (bilinmiyorsa undefined) */
+  online?: boolean;
 };
 
 /** Mağazadan takılan kozmetikler */

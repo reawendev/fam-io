@@ -88,7 +88,7 @@ export default function ChainView({
           return recItem(publicUrl("recordings", mine[x.id].audio_path), mine[x.id].offset_time, x, x.id, isEffect(fx) ? (fx as EffectId) : undefined);
         });
       playerRef.current?.destroy();
-      const p = new DubPlayer(v, { originalVolume: scene.original_volume });
+      const p = new DubPlayer(v, { originalVolume: scene.original_volume, duck: scene.scene_lines });
       playerRef.current = p;
       await p.load(items, scene.bg_audio_path ? publicUrl("scenes", scene.bg_audio_path) : null);
       p.onEnd = done;

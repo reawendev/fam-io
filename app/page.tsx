@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Avatar, Button, ButtonLink, cx, EmptyState, Notice, Progress, Skeleton } from "@/components/ui";
+import ActiveRooms from "@/components/ActiveRooms";
 import DubCard, { DUB_CARD_SELECT, DubCardSkeleton, type DubCardData } from "@/components/DubCard";
 import type { StationId } from "@/components/landing/DubbingMachine3D";
 import { ensureUser, errMsg, sb } from "@/lib/supabase";
@@ -147,6 +148,19 @@ export default function Home() {
             <DubbingMachine3D alignRight={false} onStation={setStation} />
           </div>
         )}
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pt-16 sm:px-6">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="eyebrow">Canlı</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight">Aktif odalar</h2>
+          </div>
+          <Link href="/odalar" className="text-xs text-muted hover:text-fg">
+            Tümü →
+          </Link>
+        </div>
+        <ActiveRooms limit={3} compact />
       </section>
 
       <section className="mx-auto grid max-w-6xl gap-8 px-4 pt-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_300px]">

@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowRight, Clapperboard, Users } from "lucide-react";
+import { ArrowRight, Clapperboard, EyeOff, Globe, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import ActiveRooms from "@/components/ActiveRooms";
 import { MODE_ICON } from "@/components/room/ModePicker";
 import { Button, ButtonLink, cx, Notice, PageHeader } from "@/components/ui";
 import { useMe } from "@/lib/auth";
@@ -17,6 +18,19 @@ export default function Oyna() {
   const [busy, setBusy] = useState<GameMode | "join" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState("");
+  // Açık lobi: Aktif odalarda herkes görür. Gizli: sadece kod / link (tercih hatırlanır)
+  const [pub, setPub] = useState(true);
+  useEffect(() => {
+    try {
+      setPub(localStorage.getItem("famio.publicRoom") !== "0");
+    } catch {}
+  }, []);
+  function choosePub(v: boolean) {
+    setPub(v);
+    try {
+      localStorage.setItem("famio.publicRoom", v ? "1" : "0");
+    } catch {}
+  }
 
   async function create(mode: GameMode) {
     setBusy(mode);
@@ -25,6 +39,10 @@ export default function Oyna() {
       await ensureUser();
       const { data, error } = await sb().rpc("create_game", { p_mode: mode });
       if (error) throw error;
+      if (!pub) {
+        const { data: room } = await sb().from("rooms").select("id").eq("code", data as string).maybeSingle();
+        if (room) await sb().rpc("set_room_public", { p_room: (room as { id: string }).id, p_public: false });
+      }
       router.push(`/oda/${data}`);
     } catch (e) {
       setError(errMsg(e));
@@ -68,6 +86,34 @@ export default function Oyna() {
           </ButtonLink>
         </div>
       )}
+
+      <div className="mb-8 flex flex-wrap items-center gap-3">
+        <span className="text-sm text-fg-2">Lobi</span>
+        <div className="inline-flex rounded-lg border border-line bg-surface p-0.5" role="radiogroup" aria-label="Lobi görünürlüğü">
+          {(
+            [
+              [true, "Herkese açık", <Globe key="g" className="size-3.5" />],
+              [false, "Gizli", <EyeOff key="e" className="size-3.5" />],
+            ] as const
+          ).map(([v, label, icon]) => (
+            <button
+              key={label}
+              role="radio"
+              aria-checked={pub === v}
+              onClick={() => choosePub(v)}
+              className={cx(
+                "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[13px] transition-colors",
+                pub === v ? "bg-surface-3 text-fg" : "text-muted hover:text-fg",
+              )}
+            >
+              {icon} {label}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-muted">
+          {pub ? "Oda, Aktif odalar listesinde herkese görünür." : "Oda listede görünmez; sadece kod ya da linkle girilir."} Lobide değiştirebilirsin.
+        </span>
+      </div>
 
       {[
         { title: "Sahnesiz oyunlar", sub: "Video yok, sadece sesiniz. Hemen başlar.", list: MODES.filter((m) => !m.scene) },
@@ -120,6 +166,19 @@ export default function Oyna() {
           </div>
         </section>
       ))}
+
+      <section className="mb-8">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-medium">Aktif odalar</h2>
+            <p className="text-xs text-muted">Herkese açık lobilere tek tıkla katıl.</p>
+          </div>
+          <ButtonLink href="/odalar" size="sm" variant="ghost" icon={<ArrowRight className="size-4" />}>
+            Tümü
+          </ButtonLink>
+        </div>
+        <ActiveRooms limit={3} compact />
+      </section>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <form onSubmit={join} className="panel flex flex-col gap-3 p-4">

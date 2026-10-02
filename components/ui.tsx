@@ -4,7 +4,8 @@ import { LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { forwardRef, useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { avatarUrl } from "@/lib/supabase";
-import { frameClass, nameClass } from "@/lib/shop";
+import AvatarDecoration from "./fx/AvatarDecoration";
+import { NameStyle, NAME_STYLES } from "./fx/NameStyle";
 import { GradientText } from "./fx/GradientText";
 import { GlitchText } from "./fx/GlitchText";
 
@@ -132,12 +133,15 @@ export function Avatar(props: {
   /** Mağazadan alınmış çerçeve (frame_altin …) */
   frame?: string;
 }) {
-  if (props.frame)
+  if (props.frame) {
+    const size = props.size ?? 28;
     return (
-      <span className={frameClass(props.frame)} title="Profil çerçevesi">
+      <span className="avatar-deco" style={{ width: size, height: size }}>
         <AvatarCore {...props} />
+        <AvatarDecoration id={props.frame} size={size} />
       </span>
     );
+  }
   return <AvatarCore {...props} />;
 }
 
@@ -145,7 +149,8 @@ export function Avatar(props: {
 export function UserName({ name, fx, className }: { name: string; fx?: string; className?: string }) {
   if (fx === "name_aurora") return <GradientText className={className}>{name}</GradientText>;
   if (fx === "name_glitch") return <GlitchText text={name} className={className} />;
-  return <span className={cx(nameClass(fx), className)}>{name}</span>;
+  if (fx && NAME_STYLES.includes(fx)) return <NameStyle id={fx} name={name} className={className} />;
+  return <span className={className}>{name}</span>;
 }
 
 function AvatarCore({

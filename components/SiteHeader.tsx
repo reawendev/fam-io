@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleHelp, Flame, Gamepad2, LogOut, Shield, ShoppingBag, Trophy, UserRound, Users } from "lucide-react";
+import { CircleHelp, DoorOpen, Flame, Gamepad2, LogOut, Shield, ShoppingBag, Trophy, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -12,6 +12,7 @@ import { Avatar, btn, cx, Logo, UserName } from "./ui";
 
 const NAV = [
   { href: "/oyna", label: "Oyna" },
+  { href: "/odalar", label: "Odalar" },
   { href: "/sahneler", label: "Sahneler" },
   { href: "/liderlik", label: "Liderlik" },
   { href: "/ekipler", label: "Ekipler" },
@@ -81,6 +82,9 @@ export default function SiteHeader() {
                     </Link>
                     <Link role="menuitem" href="/oyna" className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2 md:hidden">
                       <Gamepad2 className="size-4 text-muted" /> Oyun kur
+                    </Link>
+                    <Link role="menuitem" href="/odalar" className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2 md:hidden">
+                      <DoorOpen className="size-4 text-muted" /> Aktif odalar
                     </Link>
                     <Link role="menuitem" href="/liderlik" className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2 md:hidden">
                       <Trophy className="size-4 text-muted" /> Liderlik

@@ -7,7 +7,7 @@ import AwardPlaque from "@/components/AwardPlaque";
 import { Avatar, Button, ButtonLink, cx, EmptyState, Notice, PageHeader, Skeleton, UserName } from "@/components/ui";
 import { refreshMe, useMe } from "@/lib/auth";
 import { levelInfo } from "@/lib/progress";
-import { balance, bannerClass, BOARD_INFO, KIND_LABEL, PLAQUES, playItemSound, type ShopItem, type ShopKind } from "@/lib/shop";
+import { balance, bannerClass, BOARD_INFO, KIND_LABEL, plaqueLook, playItemSound, type ShopItem, type ShopKind } from "@/lib/shop";
 import { errMsg, sb } from "@/lib/supabase";
 
 const KINDS: ShopKind[] = ["frame", "name", "banner", "plaque", "sound", "board"];
@@ -189,8 +189,8 @@ function Preview({ it, name, color, avatar }: { it: ShopItem; name: string; colo
   if (it.kind === "name") return <UserName name={name} fx={it.id} className="text-3xl font-semibold tracking-tight" />;
   if (it.kind === "banner") return <div className={cx("absolute inset-0", bannerClass(it.id))} />;
   if (it.kind === "plaque") {
-    const p = PLAQUES[it.id];
-    return p ? <AwardPlaque eyebrow="FAM-IO · PLAKET" title={p.title} tone={p.tone} className="w-[220px]" /> : null;
+    const p = plaqueLook(it.id, it.meta);
+    return p ? <AwardPlaque eyebrow={p.eyebrow} title={p.title} colors={p.colors} className="w-[220px]" /> : null;
   }
   if (it.kind === "board")
     return (

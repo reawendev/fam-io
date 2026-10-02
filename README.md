@@ -37,7 +37,7 @@ Ekran görüntüleri: docs/ klasörüne koyup aşağıdaki satırların yorumunu
 | 🎲 **Oyun modları** | **Oyna** sayfasından modu seçip sahne seçmeden oda kur. **Klasik**, **Kulaktan kulağa**, **Kim konuştu?**, **Efekt yarışması**, **Duygu ruleti**, **Sesli hikâye** (hepsi sahnesiz), **Taklit zinciri** (orijinali sadece ilk kişi duyar, herkes bir öncekini taklit eder), **Senarist** (önce replikleri yeniden yaz, sonra seslendir) ve **Düello** (aynı replikte eleme usulü turnuva). |
 | 🃏 **Ekler** | **Zorluk kartları** (fısıldayarak, spiker gibi, ağlayarak…), **Hain** (gizli görevli oyuncuyu bul) ve **Foley ustası** (biri konuşmaz, sahnenin efektlerini yapar). |
 | 👤 **Profiller** | Kullanıcı adı + şifre ile profil, profil fotoğrafı, kapak görseli, 5 saniyelik imza sesi ve ziyaretçi defteri. Dublajların, level'in, serin ve en uyumlu partnerlerin profilinde. |
-| 🛍️ **XP mağazası** | Kazandığın XP ile çerçeve, isim efekti, plaket, giriş sesi ve profil kapağı al. Harcamak level'i düşürmez. |
+| 🛍️ **XP mağazası** | Kazandığın XP ile Discord tarzı hareketli avatar süslemesi, isim efekti, plaket, giriş sesi ve profil kapağı al. Harcamak level'i düşürmez. |
 | 🛡️ **Ekipler** | Arkadaş grubunla ekip kur, davet koduyla topla; haftalık ekip ligi. |
 | 🤖 **Discord komutları** | `/dublaj` ile Discord'dan oda kur, `/liderlik`, `/ekipler`, `/profil`. |
 | 🎬 **Yapımcılar** | Sahne ekleyenler her yerde "Oluşturan: …" etiketiyle görünür; sahneleri oynandıkça yapımcı XP'si ve rozet kazanırlar. |
@@ -51,9 +51,10 @@ Ekran görüntüleri: docs/ klasörüne koyup aşağıdaki satırların yorumunu
 | 🎛️ **Ses efektleri** | Robot, Sincap, Kalın ses, Dev, Telefon, Megafon, Mağara, Uzaylı. Kayıttan sonra da değiştirilebilir; senkron bozulmaz. |
 | 🗳️ **Final oylaması** | "Turun seslendirmeni" ve "En komik replik". Her oy +10 XP. |
 | 🏅 **Rozetler** | 30'a yakın otomatik rozet ve Kurucu, Erken Üye gibi özel rozetler; en iyileri isminin yanında. Rozet kazanınca, level atlayınca kutlama animasyonu. |
-| 🛡️ **Oda yönetimi** | Oda sahibi oyuncu çıkarabilir, odayı kilitleyebilir, sahipliği devredebilir. |
+| 🛡️ **Oda yönetimi** | Oda sahibi oyuncu çıkarabilir, odayı kilitleyebilir, sahipliği devredebilir. Kimin bağlantısı koptuğu canlı görünür; boşalan oda kendiliğinden kapanır. |
+| 🚪 **Aktif odalar** | Herkese açık lobiler `/odalar`'da listelenir, tek tıkla katılınır. Gizli lobiler sadece kod / linkle. |
 | 🧭 **İlk giriş rehberi** | 3 adımlık kısa tur ve kimseyi beklemeden "tek başına prova". |
-| 🧰 **Yönetim paneli** | Kurucu rozeti olanlara: rozet verme, Discord ayarı, sahne/dublaj/yorum silme, depolama temizliği. |
+| 🧰 **Yönetim paneli** | Kurucu rozeti olanlara: üyelerin XP'si ve bakiyesi, eşya verme, plaket tasarımı, mağaza fiyatları, oda kapatma, rozet verme, Discord ayarı, sahne/dublaj/yorum silme, depolama temizliği. |
 | 🗜️ **Otomatik sıkıştırma** | Yüklenen videolar tarayıcıda 720p'ye küçültülür; ücretsiz depolama çok daha geç dolar. |
 | 💬 **Discord bildirimi** | Her yeni dublaj Discord kanalınıza otomatik düşer. |
 | 🎭 **Karakter seçimi** | Herkes lobide istediği karakteri seçer; seçilmeyenler başlarken rastgele dağıtılır. |
@@ -63,7 +64,7 @@ Ekran görüntüleri: docs/ klasörüne koyup aşağıdaki satırların yorumunu
 | 🍿 **Senkron final** | Final, sunucu saatine göre herkesin ekranında aynı saniyede başlar; sonunda jenerik gelir. |
 | ⬇️ **Videoyu indir** | Dublajlı video tamamen tarayıcıda üretilir (MP4/WebM). Sunucu yok, ücret yok, filigran yok. |
 | 🤫 **Gizli kayıtlar** | Diğer oyuncuların kayıtları veritabanı seviyesinde (RLS) final başlayana kadar görünmez. |
-| ✂️ **Sahne editörü** | Klibini yükle, 1–7 karakter ekle, karakter konuşurken **K**'ya basılı tutarak replikleri işaretle. |
+| ✂️ **Sahne editörü** | Klibini yükle, tarayıcıda kes / kırp / sesini ayarla, 1–7 karakter ekle, karakter konuşurken **K**'ya basılı tutarak replikleri işaretle. Orijinal ses sadece replik anlarında kısılır. |
 | 🧊 **3D dublaj makinesi** | Ana sayfada döndürülebilir, tıklanabilir 3D sahne (Lobi → Kayıt → Miks → Prömiyer → İndir). |
 | 🔒 **Arkadaş kapısı** | İsteğe bağlı site şifresiyle sadece tanıdıklara açık. |
 
@@ -242,6 +243,9 @@ Kurucu rozeti olan herkes yönetim paneline girebilir. Görselleri kendin üretm
 
 - **Depolama:** Supabase'in 1 GB'lık ücretsiz alanının ne kadarı dolu. "Kullanılmayan dosyaları bul" ile tekrar çekimlerden, silinen odalardan ve yarım kalan yüklemelerden kalan dosyaları tek tıkla sil. "3 günlük eski odaları sil" hareketsiz odaları temizler (tamamlanan dublajlar silinmez).
 - **Ayarlar:** Discord webhook, site adresi, Erken Üye sınırı; Discord'a test mesajı.
+- **Üyeler ve XP:** XP ekle / çıkar / ayarla, mağaza bakiyesi, eşya ver / al, profil düzeltme, son XP hareketleri.
+- **Mağaza ve plaketler:** ürün adı / fiyatı / sırası; plaketlerin yazısı, renkleri ve fiyatı (yeni plaket de eklenir).
+- **Odalar:** tüm odalar (gizliler dahil), tek tıkla kapatma.
 - **Rozetler:** Üye ara, rozet ver ya da rozetine tıklayıp geri al.
 - **Sahneler:** Sahne sil, sahibi olmayan (eski) sahnelere yapımcı ata, kapağı olmayan sahnelere toplu kapak üret.
 - Dublaj sayfasında yöneticiler her yorumu ve dublajı silebilir.
@@ -303,8 +307,9 @@ Webhook adresi `app_settings` tablosunda durur; bu tablo tarayıcıdan okunamaz,
 ## 🎞️ Sahne hazırlama ipuçları
 
 - **30 sn – 2 dk** arası klipler idealdir. Büyük/yüksek çözünürlüklü videolar yüklenirken tarayıcıda otomatik olarak 720p'ye sıkıştırılır (Chrome/Edge/Safari); sıkıştırılmış dosya en fazla 50 MB olabilir.
-- Orijinal konuşmalar finalde duyulmasın diye video sesi varsayılan olarak kapalıdır.
-- Müzik ve efektler de duyulsun istersen klibin sesini bir vokal ayırıcıyla (ör. *Ultimate Vocal Remover*) ayır, sadece müzik/efekt kısmını editördeki **Ayrı müzik/efekt dosyası** alanına yükle.
+- Videonun kendi sesi replik dışında olduğu gibi çalar, **sadece replik anlarında kısılır**. Seviyesini editörden %0–200 ayarlayabilirsin.
+- Editördeki **Kes · Kırp · Ses** ile klibi tarayıcıda kesip kırpabilir, sesini kısıp yükseltebilirsin; replikler kendiliğinden kaydırılır.
+- Replik anlarında bile arkadaki müzik dursun istersen klibin sesini bir vokal ayırıcıyla (ör. *Ultimate Vocal Remover*) ayır, sadece müzik/efekt kısmını editördeki **Ayrı müzik/efekt dosyası** alanına yükle (orijinal ses o zaman %0 yapılır).
 - Replik metinlerini yazarsan kayıt sırasında altyazı olarak gösterilir.
 - En iyi ses için oyunculara kulaklık önerin.
 - Videoyu indirme en iyi masaüstü Chrome/Edge'de çalışır; üretim klip süresi kadar sürer, bu sırada sekmeyi açık tut.

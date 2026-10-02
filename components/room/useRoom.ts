@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ensureUser, errMsg, sb } from "@/lib/supabase";
 import { SCENE_FULL_SELECT, type Room, type RoomPlayer, type RoomRole, type SceneFull } from "@/lib/types";
 
@@ -12,6 +12,10 @@ export function useRoom(code: string) {
   const [assignments, setAssignments] = useState<RoomRole[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Realtime Presence: şu an sayfası açık olanlar (null: henüz bilinmiyor) */
+  const [online, setOnline] = useState<Set<string> | null>(null);
+  /** Sunucuya göre bu kullanıcı odadan düştü / çıkarıldı */
+  const [dropped, setDropped] = useState(false);
   const sceneIdRef = useRef<string | null>(null);
 
   const loadScene = useCallback(async (sceneId: string | null) => {
@@ -111,5 +115,42 @@ export function useRoom(code: string) {
     };
   }, [roomId, loadAll, loadAssignments, loadPlayers, loadScene]);
 
-  return { me, room, scene, players, assignments, error, loading, reload: loadAll, setError };
+  // Varlık: sayfası açık olanları canlı izle + 20 sn'de bir sunucuya "buradayım" de.
+  // Sunucu uzun süre ses vermeyeni odadan düşürür (lobide 2 dk, oyunda 5 dk) ve boş odayı kapatır.
+  useEffect(() => {
+    if (!roomId || !me) return;
+    const ch = sb().channel(`presence:${roomId}`, { config: { presence: { key: me } } });
+    ch.on("presence", { event: "sync" }, () => setOnline(new Set(Object.keys(ch.presenceState()))));
+    ch.subscribe((status) => {
+      if (status === "SUBSCRIBED") ch.track({ at: Date.now() }).catch(() => {});
+    });
+
+    let stopped = false;
+    const ping = async () => {
+      if (stopped) return;
+      const { data, error } = await sb().rpc("room_ping", { p_room: roomId });
+      if (error || stopped) return; // 010 çalıştırılmamışsa sessizce geç
+      const d = data as { in_room: boolean; room: boolean } | null;
+      if (d && !d.room) setError("Oda kapandı.");
+      setDropped(!!d && !d.in_room);
+    };
+    ping();
+    const iv = setInterval(ping, 20000);
+    const onVis = () => document.visibilityState === "visible" && ping();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      stopped = true;
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", onVis);
+      ch.untrack().catch(() => {});
+      sb().removeChannel(ch);
+    };
+  }, [roomId, me]);
+
+  const withOnline = useMemo(
+    () => (online ? players.map((p) => ({ ...p, online: online.has(p.user_id) || p.user_id === me })) : players),
+    [players, online, me],
+  );
+
+  return { me, room, scene, players: withOnline, assignments, error, loading, dropped, reload: loadAll, setError };
 }

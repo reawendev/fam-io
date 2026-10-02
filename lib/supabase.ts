@@ -68,6 +68,7 @@ export function serverOffset(): Promise<number> {
 }
 
 const MIGRATION_HINT: [RegExp, string][] = [
+  [/room_ping|room_presence|set_room_public|list_active_rooms|is_public|admin_adjust_|admin_set_xp|admin_give_item|admin_take_item|admin_update_|admin_user_detail|admin_list_rooms|admin_close_room|admin_save_plaque|admin_delete_plaque|shop_items\.meta|column .*meta/i, "010_odalar_yonetim_plaket.sql"],
   [/admin_save_sound|admin_clear_sound|admin_delete_sound|audio_path|emoji|sounds/i, "009_isim_efektleri_ses_dosyalari.sql"],
   [/party_|scene_request|showcase|_story|board|shop_items_kind_check/i, "008_parti_istek_vitrin.sql"],
   [/create_game|phone_|kulak|scene_id.*null|rooms_mode_check/i, "007_oyun_kur_kulaktan_kulaga.sql"],

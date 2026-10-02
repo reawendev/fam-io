@@ -10,6 +10,7 @@ import ChainView from "@/components/ChainView";
 import { cardInfo, modeName } from "@/lib/modes";
 import { useMe } from "@/lib/auth";
 import { useIsAdmin } from "@/lib/admin";
+import VolumeSlider from "@/components/VolumeSlider";
 import { downloadBlob, exportDub, exportSupported, slugify } from "@/lib/exporter";
 import { DubPlayer, recItem, unlockAudio, type DubItem } from "@/lib/player";
 import { timeAgo } from "@/lib/progress";
@@ -137,7 +138,7 @@ export default function DubView({ id }: { id: string }) {
     const foley = Array.isArray(dub.dub_foley) ? dub.dub_foley[0] : dub.dub_foley;
     if (foley) items.push({ url: publicUrl("recordings", foley.audio_path), at: foley.offset_time, from: 0, key: "foley" });
     itemsRef.current = items;
-    const p = new DubPlayer(videoRef.current, { originalVolume: dub.scenes.original_volume });
+    const p = new DubPlayer(videoRef.current, { originalVolume: dub.scenes.original_volume, duck: dub.scenes.scene_lines });
     playerRef.current = p;
     p.onTick = setPos;
     p.onEnd = () => setPlaying(false);
@@ -233,6 +234,7 @@ export default function DubView({ id }: { id: string }) {
         items: itemsRef.current,
         bgUrl: scene.bg_audio_path ? publicUrl("scenes", scene.bg_audio_path) : null,
         originalVolume: scene.original_volume,
+        duck: scene.scene_lines,
         signal: ac.signal,
         onPhase: (phase) => setExp((s) => ({ kind: "working", phase, progress: s.kind === "working" ? s.progress : 0 })),
         onProgress: (f) => setExp((s) => (s.kind === "working" ? { ...s, progress: f } : s)),
@@ -346,6 +348,7 @@ export default function DubView({ id }: { id: string }) {
               {playing ? <Square className="size-4" /> : <Play className="size-4" />}
             </IconButton>
             <Progress value={dur ? pos / dur : 0} tone="fg" />
+            <VolumeSlider onChange={(v) => playerRef.current?.setVolume(v)} />
           </div>
         </div>
 

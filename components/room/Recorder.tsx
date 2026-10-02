@@ -380,7 +380,7 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
     try {
       await unlockAudio(v);
       playerRef.current?.destroy();
-      const p = new DubPlayer(v);
+      const p = new DubPlayer(v, { originalVolume: scene.original_volume, duck: scene.scene_lines });
       playerRef.current = p;
       await p.load([recItem(rec.url, rec.offset, line, line.id, rec.effect)], null);
       p.onEnd = () => setMode({ kind: "idle" });
@@ -401,7 +401,7 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
     try {
       await unlockAudio(v);
       playerRef.current?.destroy();
-      const p = new DubPlayer(v, { originalVolume: scene.original_volume });
+      const p = new DubPlayer(v, { originalVolume: scene.original_volume, duck: scene.scene_lines });
       playerRef.current = p;
       const items = myLines.filter((l) => recs[l.id]).map((l) => recItem(recs[l.id].url, recs[l.id].offset, l, l.id, recs[l.id].effect));
       if (foleyRec) items.push({ url: foleyRec.url, at: foleyRec.offset, from: 0, key: FOLEY_ID });
@@ -788,10 +788,16 @@ export default function Recorder({ room, scene, me, players, assignments, isHost
               const pos = chain ? order.indexOf(p.user_id) : -1;
               return (
                 <li key={p.user_id} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm">
-                  <Avatar name={p.nickname} color={p.color} path={p.avatar_path} size={24} />
-                  <span className="min-w-0 flex-1 truncate">
+                  <span className={cx("relative inline-flex", p.online === false && "opacity-45 grayscale")}>
+                    <Avatar name={p.nickname} color={p.color} path={p.avatar_path} size={24} />
+                    {p.online !== undefined && (
+                      <span className={cx("absolute -right-0.5 -bottom-0.5 size-2 rounded-full ring-2 ring-surface", p.online ? "bg-ok" : "bg-muted")} />
+                    )}
+                  </span>
+                  <span className={cx("min-w-0 flex-1 truncate", p.online === false && "text-muted")} title={p.online === false ? "Bağlantı yok" : undefined}>
                     {p.nickname}
                     {p.user_id === me && <span className="text-muted"> (sen)</span>}
+                    {p.online === false && <span className="text-[11px] text-muted"> · bağlantı yok</span>}
                   </span>
                   <span className={cx("text-xs", p.done ? "text-ok" : "text-muted")}>
                     {pos >= 0 && <span className="mr-1 font-mono text-muted">{pos + 1}.</span>}

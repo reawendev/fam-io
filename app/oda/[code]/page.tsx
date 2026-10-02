@@ -1,7 +1,7 @@
 "use client";
 
-import { Check, Copy, Lock, UserX } from "lucide-react";
-import { useParams } from "next/navigation";
+import { Check, Copy, Lock, LogOut, UserX } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useRoom } from "@/components/room/useRoom";
 import Lobby from "@/components/room/Lobby";
@@ -62,9 +62,60 @@ export default function OdaPage() {
   const [joining, setJoining] = useState(false);
   const [joinErr, setJoinErr] = useState<string | null>(null);
   const autoTried = useRef(false);
+  const router = useRouter();
+  const leaving = useRef(false);
+  const wasIn = useRef(false);
+  const lastTry = useRef(0);
 
   const inRoom = !!r.me && r.players.some((p) => p.user_id === r.me);
   const banned = !!r.me && !!r.room?.banned?.includes(r.me);
+  if (inRoom) wasIn.current = true;
+
+  // Ayrılanları herkese göster: "X odadan ayrıldı"
+  const [notes, setNotes] = useState<{ id: number; text: string }[]>([]);
+  const prevPlayers = useRef<Map<string, string> | null>(null);
+  useEffect(() => {
+    const now = new Map(r.players.map((p) => [p.user_id, p.nickname]));
+    const prev = prevPlayers.current;
+    prevPlayers.current = now;
+    if (!prev || !r.room) return;
+    const gone = [...prev].filter(([id]) => !now.has(id) && id !== r.me);
+    if (!gone.length) return;
+    const fresh = gone.map(([id, nick]) => ({
+      id: Math.random(),
+      text: r.room!.banned?.includes(id) ? `${nick} odadan çıkarıldı` : `${nick} odadan ayrıldı`,
+    }));
+    setNotes((n) => [...n, ...fresh].slice(-3));
+    const ids = fresh.map((f) => f.id);
+    setTimeout(() => setNotes((n) => n.filter((x) => !ids.includes(x.id))), 4500);
+  }, [r.players, r.room, r.me]);
+
+  // Uygulama içinde başka sayfaya geçince lobideki / finaldeki odadan ayrıl.
+  // (Oyun sürerken yanlışlıkla çıkan karakterini kaybetmesin: o zaman sunucu 5 dk sonra düşürür.)
+  const statusRef = useRef(r.room?.status);
+  statusRef.current = r.room?.status;
+  const roomIdRef = useRef(r.room?.id);
+  roomIdRef.current = r.room?.id;
+  useEffect(() => {
+    const path = `/oda/${code}`.toLowerCase();
+    return () => {
+      const id = roomIdRef.current;
+      const st = statusRef.current;
+      if (!id || leaving.current) return;
+      setTimeout(() => {
+        if (location.pathname.toLowerCase().startsWith(path)) return; // aynı sayfa (yeniden bağlanma)
+        if (st === "lobby" || st === "finale") sb().rpc("leave_room", { p_room: id }).then(() => {});
+      }, 300);
+    };
+  }, [code]);
+
+  async function leave() {
+    const st = r.room?.status;
+    if ((st === "recording" || st === "writing") && !confirm("Oyun sürüyor. Odadan çıkarsan karakterlerin oda sahibine geçer. Çıkılsın mı?")) return;
+    leaving.current = true;
+    if (r.room) await sb().rpc("leave_room", { p_room: r.room.id });
+    router.push("/odalar");
+  }
 
   async function join() {
     setJoining(true);
@@ -80,13 +131,16 @@ export default function OdaPage() {
     }
   }
 
-  // Lobideki odaya otomatik katıl
+  // Lobideki odaya otomatik katıl; bağlantı kopup düşürüldüyse (telefon uykusu vb.) geri dön
   useEffect(() => {
-    if (autoTried.current || r.loading || !r.room || inRoom || banned || r.room.status !== "lobby") return;
+    if (r.loading || !r.room || inRoom || banned || leaving.current || r.room.status !== "lobby") return;
+    if (autoTried.current && !(wasIn.current && r.dropped)) return;
+    if (Date.now() - lastTry.current < 8000) return;
     autoTried.current = true;
+    lastTry.current = Date.now();
     join();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [r.loading, r.room, inRoom]);
+  }, [r.loading, r.room, inRoom, r.dropped]);
 
   if (r.loading)
     return (
@@ -169,7 +223,23 @@ export default function OdaPage() {
 
   return (
     <>
-      <RoomBar code={room.code} title={sceneless ? "" : title} status={room.status} locked={!!room.locked} mode={room.mode} />
+      <RoomBar
+        code={room.code}
+        title={sceneless ? "" : title}
+        status={room.status}
+        locked={!!room.locked}
+        mode={room.mode}
+        onLeave={inRoom ? leave : undefined}
+      />
+      {notes.length > 0 && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex flex-col items-center gap-2 px-4" aria-live="polite">
+          {notes.map((n) => (
+            <p key={n.id} className="toast-in flex items-center gap-2 rounded-full border border-line-strong bg-surface-2/95 px-3.5 py-2 text-sm shadow-lg backdrop-blur">
+              <LogOut className="size-3.5 text-muted" /> {n.text}
+            </p>
+          ))}
+        </div>
+      )}
       {r.error && (
         <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
           <Notice>{r.error}</Notice>
@@ -229,7 +299,21 @@ export default function OdaPage() {
   );
 }
 
-function RoomBar({ code, title, status, locked, mode }: { code: string; title: string; status: RoomStatus; locked: boolean; mode?: GameMode }) {
+function RoomBar({
+  code,
+  title,
+  status,
+  locked,
+  mode,
+  onLeave,
+}: {
+  code: string;
+  title: string;
+  status: RoomStatus;
+  locked: boolean;
+  mode?: GameMode;
+  onLeave?: () => void;
+}) {
   const [copied, setCopied] = useState(false);
   const PHASES = phasesFor(mode);
   const idx = PHASES.findIndex((p) => p.id === status);
@@ -282,6 +366,16 @@ function RoomBar({ code, title, status, locked, mode }: { code: string; title: s
             </li>
           ))}
         </ol>
+        {onLeave && (
+          <button
+            onClick={onLeave}
+            className="-mr-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs text-muted transition-colors hover:bg-surface-2 hover:text-red-300"
+            title="Odadan çık"
+          >
+            <LogOut className="size-3.5" />
+            <span className="hidden sm:inline">Çık</span>
+          </button>
+        )}
       </div>
     </div>
   );

@@ -187,33 +187,148 @@ input[type="range"] {
 /* ------------------------------------------------------------
    XP MAĞAZASI KOZMETİKLERİ
    ------------------------------------------------------------ */
-.avatar-frame {
+
+/* Avatar süslemeleri (Discord tarzı, components/fx/AvatarDecoration.tsx).
+   Süsleme avatarın üstüne taşar; yerleşimi değiştirmez. */
+.avatar-deco {
   position: relative;
   display: inline-flex;
-  border-radius: 9999px;
-  padding: 2px;
   flex-shrink: 0;
+  border-radius: 9999px;
 }
-.avatar-frame > * { border-radius: 9999px; }
-.frame-altin { background: conic-gradient(from 210deg, #fff2b0, #e2ac2c, #7a5208, #e2ac2c, #fff2b0); }
-.frame-neon { background: conic-gradient(#22d3ee, #a855f7, #ec4899, #22d3ee); box-shadow: 0 0 10px #a855f788, 0 0 18px #22d3ee44; }
-.frame-ates { background: conic-gradient(from 0deg, #fde047, #f97316, #dc2626, #f97316, #fde047); box-shadow: 0 0 12px #f9731666; animation: spin-slow 3s linear infinite; }
-.frame-buz { background: conic-gradient(#e0f2fe, #7dd3fc, #38bdf8, #e0f2fe); box-shadow: 0 0 12px #7dd3fc55; }
-.frame-gokkusagi { background: conic-gradient(#f87171, #fbbf24, #a3e635, #22d3ee, #818cf8, #e879f9, #f87171); animation: spin-slow 4s linear infinite; }
-.frame-holo { background: linear-gradient(120deg, #ff7a1a, #f472b6, #a78bfa, #38bdf8, #a3e635, #ff7a1a); background-size: 300% 300%; animation: holo-shift 3s ease infinite; box-shadow: 0 0 14px #a78bfa66; }
-/* Döndürülen çerçevelerde avatar dönmesin */
-.frame-ates > *, .frame-gokkusagi > * { animation: spin-slow 3s linear infinite reverse; }
-.frame-gokkusagi > * { animation-duration: 4s; }
+.avatar-deco > :first-child { border-radius: 9999px; }
+.deco * { transform-box: view-box; }
+.deco-sm .deco-detail { display: none; }
+.deco-spin { transform-origin: 60px 60px; animation: deco-spin 6s linear infinite; }
+.deco-spin-rev { transform-origin: 60px 60px; animation: deco-spin 6s linear infinite reverse; }
+.deco-twinkle { animation: deco-twinkle 2.4s ease-in-out infinite; }
+.deco-flicker { animation: deco-flicker 5s steps(1, end) infinite; }
+.deco-pulse { transform-origin: 60px 60px; animation: deco-pulse 1.6s ease-in-out infinite alternate; }
+.deco-flame { transform-origin: 0 0; animation: deco-flame 0.9s ease-in-out infinite alternate; }
+.deco-ember { animation: deco-ember 2.8s ease-out infinite; }
+.deco-snow { animation: deco-snow 4.5s ease-in-out infinite; }
+.deco-bob { animation: deco-bob 3.2s ease-in-out infinite; }
+@keyframes deco-spin { to { transform: rotate(360deg); } }
+@keyframes deco-twinkle {
+  0%, 100% { transform: scale(0.35) rotate(0deg); opacity: 0.2; }
+  50% { transform: scale(1) rotate(45deg); opacity: 1; }
+}
+@keyframes deco-flicker {
+  0%, 100% { opacity: 1; }
+  71% { opacity: 1; }
+  72% { opacity: 0.35; }
+  74% { opacity: 1; }
+  76% { opacity: 0.5; }
+  78% { opacity: 1; }
+}
+@keyframes deco-pulse { from { opacity: 0.55; transform: scale(0.98); } to { opacity: 1; transform: scale(1.03); } }
+@keyframes deco-flame {
+  0% { transform: scale(1, 0.82) skewX(-4deg); }
+  50% { transform: scale(0.94, 1.08) skewX(3deg); }
+  100% { transform: scale(1.04, 0.95) skewX(-2deg); }
+}
+@keyframes deco-ember {
+  0% { transform: translate(0, 0); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(3px, -22px); opacity: 0; }
+}
+@keyframes deco-snow {
+  0% { transform: translate(0, -4px) rotate(0deg); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translate(4px, 12px) rotate(90deg); opacity: 0; }
+}
+@keyframes deco-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
 @keyframes spin-slow { to { transform: rotate(360deg); } }
 @keyframes holo-shift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
 
-.name-fx { background-clip: text; -webkit-background-clip: text; color: transparent; }
-.name-altin { background-image: linear-gradient(180deg, #fff2b0, #e2ac2c 60%, #b8860b); }
-.name-parilti { background-image: linear-gradient(100deg, var(--color-fg) 40%, #ffffff 50%, var(--color-fg) 60%); background-size: 250% 100%; animation: shimmer 2.6s linear infinite; }
-.name-ates { background-image: linear-gradient(0deg, #dc2626, #f97316, #fde047); background-size: 100% 200%; animation: fire-up 1.6s ease-in-out infinite alternate; }
-.name-gokkusagi { background-image: linear-gradient(90deg, #f87171, #fbbf24, #a3e635, #22d3ee, #818cf8, #e879f9, #f87171); background-size: 200% 100%; animation: rainbow-x 4s linear infinite; }
-@keyframes fire-up { to { background-position: 0 100%; } }
-@keyframes rainbow-x { to { background-position: 200% 0; } }
+/* İsim stilleri (Discord'un görünen ad stilleri gibi; components/fx/NameStyle.tsx).
+   Aurora ve Glitch ayrı bileşenler. */
+.name-style { position: relative; display: inline-block; width: fit-content; max-width: 100%; vertical-align: bottom; }
+.name-style .ns-text {
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.name-style .ns-spark {
+  position: absolute;
+  width: 0.5em;
+  height: 0.5em;
+  pointer-events: none;
+  background: currentColor;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: ns-twinkle 2.2s ease-in-out infinite;
+}
+
+/* Altın: metalik gradyan + üstünden geçen parlama + altın ışıltı */
+.ns-altin { color: #e9b53a; }
+.ns-altin .ns-text {
+  background-image:
+    linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.95) 48%, transparent 58%),
+    linear-gradient(180deg, #fff3bf 0%, #f5c84a 45%, #b9800f 75%, #f3cf63 100%);
+  background-size: 250% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  animation: ns-sweep 3.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(240, 190, 60, 0.45));
+}
+.ns-altin .ns-spark { color: #fff7d6; }
+
+/* Parıltı: gümüş-beyaz, parlama geçer, harflerde yıldızlar çakar */
+.ns-parilti { color: #dfe6ff; }
+.ns-parilti .ns-text {
+  background-image:
+    linear-gradient(105deg, transparent 40%, #ffffff 50%, transparent 60%),
+    linear-gradient(180deg, #ffffff 0%, #c9d3f2 55%, #8f9bc4 100%);
+  background-size: 250% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  animation: ns-sweep 2.6s linear infinite;
+  filter: drop-shadow(0 0 5px rgba(190, 210, 255, 0.5));
+}
+.ns-parilti .ns-spark { color: #ffffff; }
+
+/* Ateş: yukarı akan alev renkleri + nabız gibi atan turuncu ışıltı */
+.ns-ates { color: #ff8a1f; }
+.ns-ates .ns-text {
+  background-image: linear-gradient(0deg, #d31d0b 0%, #ff5a0a 20%, #ff9a1a 40%, #ffe066 60%, #ff7a12 80%, #d31d0b 100%);
+  background-size: 100% 300%;
+  background-repeat: repeat-y;
+  animation: ns-rise 1.4s linear infinite, ns-heat 1.1s ease-in-out infinite alternate;
+}
+.ns-ates .ns-spark { color: #ffd27a; width: 0.32em; height: 0.32em; border-radius: 50%; clip-path: none; animation: ns-ember 1.8s ease-out infinite; }
+
+/* Gökkuşağı: akan renkler + yumuşak beyaz ışıltı */
+.ns-gokkusagi { color: #ff9ad5; }
+.ns-gokkusagi .ns-text {
+  background-image: linear-gradient(90deg, #ff5f6d, #ffb347, #ffe66d, #7be38a, #4fc3ff, #8f7cff, #ff7ce5, #ff5f6d);
+  background-size: 200% 100%;
+  background-repeat: repeat-x;
+  animation: ns-flow 3s linear infinite;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.28));
+}
+.ns-gokkusagi .ns-spark { color: #fff; }
+
+@keyframes ns-sweep { 0% { background-position: 130% 0, 0 0; } 60%, 100% { background-position: -30% 0, 0 0; } }
+@keyframes ns-flow { to { background-position: 200% 0; } }
+@keyframes ns-rise { to { background-position: 0 150%; } }
+@keyframes ns-heat {
+  from { filter: drop-shadow(0 0 3px rgba(255, 90, 10, 0.45)); }
+  to { filter: drop-shadow(0 0 9px rgba(255, 120, 20, 0.8)); }
+}
+@keyframes ns-twinkle {
+  0%, 100% { transform: scale(0) rotate(0deg); opacity: 0; }
+  45% { transform: scale(1) rotate(60deg); opacity: 1; }
+  60% { transform: scale(0.2) rotate(90deg); opacity: 0; }
+}
+@keyframes ns-ember {
+  0% { transform: translateY(0); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(-0.9em); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deco *, .name-style .ns-text, .name-style .ns-spark { animation: none !important; }
+  .name-style .ns-spark { display: none; }
+}
 
 .banner-preset { background-color: var(--color-surface-2); }
 .banner-gece { background: radial-gradient(1200px 300px at 80% 0%, #312e81aa, transparent), radial-gradient(800px 260px at 10% 100%, #1e3a8a88, transparent), #0b0b1a; }
@@ -224,7 +339,7 @@ input[type="range"] {
 .banner-aurora { background: linear-gradient(120deg, #052e16, #134e4a, #4c1d95, #052e16); background-size: 300% 300%; animation: holo-shift 10s ease infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .frame-ates, .frame-gokkusagi, .frame-holo, .frame-ates > *, .frame-gokkusagi > *, .name-parilti, .name-ates, .name-gokkusagi, .banner-aurora { animation: none; }
+  .banner-aurora { animation: none; }
 }
 
 /* ------------------------------------------------------------
