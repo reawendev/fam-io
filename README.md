@@ -119,7 +119,7 @@ flowchart LR
 ### 2. Yerel geliştirme
 
 ```bash
-git clone https://github.com/<kullanici-adi>/fam-io.git
+git clone https://github.com/<reawendev>/fam-io.git
 cd fam-io
 cp .env.example .env.local   # Supabase bilgilerini doldur
 npm install
